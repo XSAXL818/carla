@@ -1,6 +1,14 @@
 CARLA Simulator
 ===============
 
+> **Fork notice:** This repository is based on
+> [CARLA Simulator](https://github.com/carla-simulator/carla) (`ue58-dev`)
+> and adds new content and features on top of it. The upstream branch is kept
+> in `ue58-dev`; project work is developed in `dev`.
+>
+> **本项目基于 [CARLA](https://github.com/carla-simulator/carla)（`ue58-dev`）
+> 开发，并在其基础上增加新的内容与功能。**
+
 [![Documentation](https://readthedocs.org/projects/carla-ue5/badge/?version=latest)](https://carla-ue5.readthedocs.io)
 
 [![carla.org](Docs/img/btn/web.webp)](http://carla.org)
