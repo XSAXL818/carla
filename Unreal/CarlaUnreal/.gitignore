@@ -16,6 +16,8 @@ Plugins/Carla/Saved
 # Official CARLA assets (Content/Carla) live in their own repository and are
 # not tracked here. Project-owned content under UserContent is tracked.
 /Content/*
+# Official CARLA assets: ~100 GB, tracked by the separate carla-content repo.
+/Content/Carla/
 !/Content/UserContent/
 !/Content/Developers/
 /Content/Developers/*
