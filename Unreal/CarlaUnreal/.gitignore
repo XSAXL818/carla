@@ -13,7 +13,13 @@ Plugins/Carla/DerivedDataCache
 Plugins/Carla/Intermediate
 Plugins/Carla/Saved
 
-/Content
+# Official CARLA assets (Content/Carla) live in their own repository and are
+# not tracked here. Project-owned content under UserContent is tracked.
+/Content/*
+!/Content/UserContent/
+!/Content/Developers/
+/Content/Developers/*
+!/Content/Developers/LoongTory/
 Config/CarlaSettings.ini
 Config/DefaultEditor.ini
 Config/CarSimConfig.ini
@@ -24,6 +30,7 @@ Config/CarSimConfig.ini
 .ignore
 
 *.sln
+*.slnx
 CMakeLists.txt
 Makefile
 
