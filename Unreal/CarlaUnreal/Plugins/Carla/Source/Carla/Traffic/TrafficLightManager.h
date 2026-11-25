@@ -96,6 +96,8 @@ private:
   // height and leaves the pole floating (see PR #9773).
   TArray<AActor*> GetSignsToIgnoreWhileTracing() const;
 
+  void EnsureDefaultModelsLoaded();
+
   void SpawnTrafficLights();
 
   void SpawnSignals();

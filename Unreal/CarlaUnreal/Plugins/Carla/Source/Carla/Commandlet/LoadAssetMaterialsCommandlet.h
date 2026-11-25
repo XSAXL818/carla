@@ -88,10 +88,6 @@ private:
   UPROPERTY()
   UObjectLibrary *MapObjectLibrary;
 
-  /// Subclass for acquiring the RoadPainter blueprint
-  UPROPERTY()
-  TSubclassOf<ARoadPainterWrapper> RoadPainterSubclass;
-
   /// Dictionary for translating the JSON file "decal_names" array
   /// to already loaded Material Instances, which are used to apply on the roads
   UPROPERTY()

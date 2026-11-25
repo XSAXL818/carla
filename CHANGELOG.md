@@ -199,6 +199,8 @@
 * Fixed the CMake toolchain picking the oldest clang sysroot when an upgraded engine keeps several side by side.
 * Fixed `Util/Docker/build.sh` failing to build the development image: the PythonAPI requirements are copied into the build context with their relative layout, so `-r ../carla/requirements.txt` resolves (#10177). The image also installs `libusb-1.0-0`, without which `open3d` cannot be imported.
 
+* Fixed the `CarlaTools` module failing to compile against UE 5.8: `SignGenerationController` included LibCarla C++ headers outside the `util/disable-ue4-macros.h` … `util/enable-ue4-macros.h` bracket, so UE's `check` macro mangled rpclib's msgpack headers into a cascade of `C4668`/`C2988` errors.
+
 #### Examples and tests
 
 * Added `typing_extensions` to `PythonAPI/carla/requirements.txt`. The navigation agents import it, but it was not listed, so `import agents.navigation.basic_agent` failed in a fresh environment.

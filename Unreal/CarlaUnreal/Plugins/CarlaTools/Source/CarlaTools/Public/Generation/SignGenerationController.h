@@ -11,7 +11,11 @@
 #include "StreetMap.h"
 #include "SignDataAsset.h"
 #include "PoleDataAsset.h"
+// LibCarla C++ headers must be bracketed so UE's macros (check/verify/...) are
+// undefined while rpclib/msgpack parses them.
+#include <util/disable-ue4-macros.h>
 #include <carla/road/Map.h>
+#include <util/enable-ue4-macros.h>
 #include "SignGenerationController.generated.h"
 
 class AGeoTrafficSign;

@@ -1,6 +1,6 @@
 {
 	"FileVersion": 3,
-	"EngineAssociation": "{E99D9DCF-48E5-441C-2A55-77B8B3CA9800}",
+	"EngineAssociation": "{86C926A7-49FF-3ACF-6A9D-9F9DCA1F065F}",
 	"Category": "",
 	"Description": "",
 	"Modules": [
@@ -24,6 +24,10 @@
 		{
 			"Name": "Carla",
 			"Enabled": true
+		},
+		{
+			"Name": "FabLauncher",
+			"Enabled": false
 		},
 		{
 			"Name": "RenderDocPlugin",
