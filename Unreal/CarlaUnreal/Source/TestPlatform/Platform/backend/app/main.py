@@ -2,7 +2,7 @@
 
 Phase 1 endpoints (no simulation):
     GET /health
-    GET /maps                       maps with their 4 route presets
+    GET /maps                       maps with their route presets (4 each for the 9 UI maps)
     GET /maps/{map}/routes          full preset list incl. (road_id, lane_id, s)
     GET /maps/{map}/preview.svg     real road network (+ optional route overlay)
     GET /vehicles

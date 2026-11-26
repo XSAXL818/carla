@@ -1,0 +1,19 @@
+# Python backend for the CARLA test platform (Source/TestPlatform/Platform/backend).
+#
+# Versions are the ones actually installed in C:\SoftWare\MiniConda\envs\chat_carla
+# (Python 3.10.21), read with `python -m pip list --format=freeze` on 2026-11-27.
+# Transitive pins that came with them here were starlette 0.49.3 / pydantic 2.12.5 /
+# anyio 4.12.1; those are left to pip instead of being frozen in this file.
+#
+# The CARLA client is deliberately NOT pinned: `carla` is a local build, installed
+# editable from the PythonAPI/carla of a CARLA checkout, not a wheel from an index.
+# See docs/architecture.md §12 for the install step.
+#
+# numpy / networkx are not imported by app/ itself; the navigation agents the
+# backend loads from PythonAPI/carla/agents/navigation (behavior_agent,
+# global_route_planner) need them at session start.
+fastapi==0.128.8
+uvicorn==0.39.0
+pillow==11.3.0
+numpy==1.26.4
+networkx==3.4.2

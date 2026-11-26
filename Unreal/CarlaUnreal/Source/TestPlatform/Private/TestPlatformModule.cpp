@@ -36,8 +36,9 @@ namespace
 		ECVF_Default);
 
 	/**
-	 * Split the resolved backend root URL into the host and port that the local
-	 * TCP probe and the run.py spawn need. False when the URL has no usable host.
+	 * Split the resolved backend root URL into the host and port that the run.py
+	 * spawn needs. The GET /health probe is an HTTP request to the root URL as-is,
+	 * so it does not go through this split. False when the URL has no usable host.
 	 */
 	bool ParseBackendEndpoint(const FString& Url, FString& OutHost, int32& OutPort)
 	{
