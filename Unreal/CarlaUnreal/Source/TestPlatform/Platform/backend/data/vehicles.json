@@ -1,0 +1,23 @@
+{
+  "_comment": "Blueprint ids this CARLA build (ue58) really ships. Kept in sync with tools/render_vehicle_thumbs.py so every card has a real in-simulator render.",
+  "vehicles": [
+    {"id": "vehicle.tesla.model3", "name": "Tesla Model 3", "cls": "轿车", "wheels": 4},
+    {"id": "vehicle.lincoln.mkz", "name": "Lincoln MKZ", "cls": "轿车", "wheels": 4},
+    {"id": "vehicle.ue4.audi.tt", "name": "Audi TT", "cls": "跑车", "wheels": 4},
+    {"id": "vehicle.ue4.mercedes.ccc", "name": "Mercedes Coupé", "cls": "轿跑", "wheels": 4},
+    {"id": "vehicle.nissan.patrol", "name": "Nissan Patrol", "cls": "SUV", "wheels": 4},
+    {"id": "vehicle.dodge.charger", "name": "Dodge Charger", "cls": "轿车", "wheels": 4},
+    {"id": "vehicle.mini.cooper", "name": "MINI Cooper", "cls": "小型", "wheels": 4},
+    {"id": "vehicle.kia.niro", "name": "Kia Niro", "cls": "SUV", "wheels": 4},
+    {"id": "vehicle.fuso.mitsubishi", "name": "Fuso Mitsubishi", "cls": "卡车", "wheels": 4},
+    {"id": "vehicle.taxi.ford", "name": "Ford Taxi", "cls": "出租车", "wheels": 4},
+    {"id": "vehicle.ue4.ford.mustang", "name": "Ford Mustang", "cls": "跑车", "wheels": 4},
+    {"id": "vehicle.ue4.chevrolet.impala", "name": "Chevrolet Impala", "cls": "轿车", "wheels": 4},
+    {"id": "vehicle.ue4.ford.crown", "name": "Ford Crown Victoria", "cls": "轿车", "wheels": 4},
+    {"id": "vehicle.sprinter.mercedes", "name": "Mercedes Sprinter", "cls": "货车", "wheels": 4},
+    {"id": "vehicle.ambulance.ford", "name": "Ford Ambulance", "cls": "救护车", "wheels": 4},
+    {"id": "vehicle.dodgecop.charger", "name": "Dodge Charger 警车", "cls": "警车", "wheels": 4},
+    {"id": "vehicle.carlacola.actors", "name": "Carla Cola 卡车", "cls": "货车", "wheels": 4},
+    {"id": "vehicle.firetruck.actors", "name": "消防车", "cls": "卡车", "wheels": 4}
+  ]
+}

@@ -1,0 +1,443 @@
+{
+ "source": "OpenDRIVE",
+ "maps": {
+  "Eixample": {
+   "roads": 195,
+   "junctions": 34,
+   "presets": [
+    {
+     "id": "loop",
+     "name": "城市环线",
+     "length_km": 0.59,
+     "waypoints": 18
+    },
+    {
+     "id": "turns",
+     "name": "路口穿行",
+     "length_km": 0.49,
+     "waypoints": 32
+    }
+   ]
+  },
+  "Mine_01": {
+   "roads": 21,
+   "junctions": 5,
+   "presets": [
+    {
+     "id": "loop",
+     "name": "城市环线",
+     "length_km": 0.64,
+     "waypoints": 10
+    },
+    {
+     "id": "arterial",
+     "name": "干道直行",
+     "length_km": 0.56,
+     "waypoints": 8
+    },
+    {
+     "id": "cross",
+     "name": "跨图长途",
+     "length_km": 3.0,
+     "waypoints": 10
+    },
+    {
+     "id": "turns",
+     "name": "路口穿行",
+     "length_km": 0.58,
+     "waypoints": 8
+    }
+   ]
+  },
+  "Town01": {
+   "roads": 122,
+   "junctions": 20,
+   "presets": [
+    {
+     "id": "loop",
+     "name": "城市环线",
+     "length_km": 0.62,
+     "waypoints": 18
+    },
+    {
+     "id": "arterial",
+     "name": "干道直行",
+     "length_km": 1.12,
+     "waypoints": 36
+    },
+    {
+     "id": "cross",
+     "name": "跨图长途",
+     "length_km": 1.06,
+     "waypoints": 38
+    },
+    {
+     "id": "turns",
+     "name": "路口穿行",
+     "length_km": 1.43,
+     "waypoints": 48
+    }
+   ]
+  },
+  "Town02": {
+   "roads": 84,
+   "junctions": 15,
+   "presets": [
+    {
+     "id": "loop",
+     "name": "城市环线",
+     "length_km": 0.4,
+     "waypoints": 18
+    },
+    {
+     "id": "arterial",
+     "name": "干道直行",
+     "length_km": 0.59,
+     "waypoints": 32
+    },
+    {
+     "id": "cross",
+     "name": "跨图长途",
+     "length_km": 0.5,
+     "waypoints": 26
+    },
+    {
+     "id": "turns",
+     "name": "路口穿行",
+     "length_km": 0.95,
+     "waypoints": 48
+    }
+   ]
+  },
+  "Town03": {
+   "roads": 369,
+   "junctions": 72,
+   "presets": [
+    {
+     "id": "loop",
+     "name": "城市环线",
+     "length_km": 1.17,
+     "waypoints": 18
+    },
+    {
+     "id": "arterial",
+     "name": "干道直行",
+     "length_km": 0.92,
+     "waypoints": 20
+    },
+    {
+     "id": "cross",
+     "name": "跨图长途",
+     "length_km": 1.69,
+     "waypoints": 48
+    },
+    {
+     "id": "turns",
+     "name": "路口穿行",
+     "length_km": 0.91,
+     "waypoints": 48
+    }
+   ]
+  },
+  "Town04": {
+   "roads": 276,
+   "junctions": 51,
+   "presets": [
+    {
+     "id": "loop",
+     "name": "城市环线",
+     "length_km": 0.87,
+     "waypoints": 10
+    },
+    {
+     "id": "arterial",
+     "name": "干道直行",
+     "length_km": 1.32,
+     "waypoints": 26
+    },
+    {
+     "id": "cross",
+     "name": "跨图长途",
+     "length_km": 2.19,
+     "waypoints": 22
+    },
+    {
+     "id": "turns",
+     "name": "路口穿行",
+     "length_km": 1.2,
+     "waypoints": 48
+    }
+   ]
+  },
+  "Town05": {
+   "roads": 323,
+   "junctions": 51,
+   "presets": [
+    {
+     "id": "loop",
+     "name": "城市环线",
+     "length_km": 1.17,
+     "waypoints": 10
+    },
+    {
+     "id": "arterial",
+     "name": "干道直行",
+     "length_km": 1.97,
+     "waypoints": 54
+    },
+    {
+     "id": "cross",
+     "name": "跨图长途",
+     "length_km": 1.05,
+     "waypoints": 46
+    },
+    {
+     "id": "turns",
+     "name": "路口穿行",
+     "length_km": 0.99,
+     "waypoints": 48
+    }
+   ]
+  },
+  "Town06": {
+   "roads": 200,
+   "junctions": 49,
+   "presets": [
+    {
+     "id": "loop",
+     "name": "城市环线",
+     "length_km": 0.63,
+     "waypoints": 18
+    },
+    {
+     "id": "arterial",
+     "name": "干道直行",
+     "length_km": 1.25,
+     "waypoints": 42
+    },
+    {
+     "id": "cross",
+     "name": "跨图长途",
+     "length_km": 1.23,
+     "waypoints": 44
+    },
+    {
+     "id": "turns",
+     "name": "路口穿行",
+     "length_km": 1.66,
+     "waypoints": 48
+    }
+   ]
+  },
+  "Town07": {
+   "roads": 277,
+   "junctions": 58,
+   "presets": [
+    {
+     "id": "loop",
+     "name": "城市环线",
+     "length_km": 0.51,
+     "waypoints": 10
+    },
+    {
+     "id": "arterial",
+     "name": "干道直行",
+     "length_km": 1.17,
+     "waypoints": 52
+    },
+    {
+     "id": "cross",
+     "name": "跨图长途",
+     "length_km": 0.67,
+     "waypoints": 42
+    },
+    {
+     "id": "turns",
+     "name": "路口穿行",
+     "length_km": 1.08,
+     "waypoints": 48
+    }
+   ]
+  },
+  "Town10HD": {
+   "roads": 108,
+   "junctions": 18,
+   "presets": [
+    {
+     "id": "loop",
+     "name": "城市环线",
+     "length_km": 0.5,
+     "waypoints": 18
+    },
+    {
+     "id": "arterial",
+     "name": "干道直行",
+     "length_km": 0.63,
+     "waypoints": 32
+    },
+    {
+     "id": "cross",
+     "name": "跨图长途",
+     "length_km": 0.53,
+     "waypoints": 32
+    },
+    {
+     "id": "turns",
+     "name": "路口穿行",
+     "length_km": 1.05,
+     "waypoints": 48
+    }
+   ]
+  },
+  "Town11": {
+   "roads": 2222,
+   "junctions": 411,
+   "presets": [
+    {
+     "id": "loop",
+     "name": "城市环线",
+     "length_km": 1.33,
+     "waypoints": 10
+    },
+    {
+     "id": "arterial",
+     "name": "干道直行",
+     "length_km": 1.58,
+     "waypoints": 10
+    },
+    {
+     "id": "cross",
+     "name": "跨图长途",
+     "length_km": 3.38,
+     "waypoints": 8
+    },
+    {
+     "id": "turns",
+     "name": "路口穿行",
+     "length_km": 7.58,
+     "waypoints": 10
+    }
+   ]
+  },
+  "Town12": {
+   "roads": 7056,
+   "junctions": 1086,
+   "presets": [
+    {
+     "id": "loop",
+     "name": "城市环线",
+     "length_km": 1.39,
+     "waypoints": 10
+    },
+    {
+     "id": "arterial",
+     "name": "干道直行",
+     "length_km": 1.3,
+     "waypoints": 6
+    },
+    {
+     "id": "cross",
+     "name": "跨图长途",
+     "length_km": 4.73,
+     "waypoints": 124
+    },
+    {
+     "id": "turns",
+     "name": "路口穿行",
+     "length_km": 2.04,
+     "waypoints": 30
+    }
+   ]
+  },
+  "Town13": {
+   "roads": 8381,
+   "junctions": 1351,
+   "presets": [
+    {
+     "id": "loop",
+     "name": "城市环线",
+     "length_km": 1.31,
+     "waypoints": 10
+    },
+    {
+     "id": "arterial",
+     "name": "干道直行",
+     "length_km": 2.38,
+     "waypoints": 8
+    },
+    {
+     "id": "cross",
+     "name": "跨图长途",
+     "length_km": 4.87,
+     "waypoints": 66
+    },
+    {
+     "id": "turns",
+     "name": "路口穿行",
+     "length_km": 1.87,
+     "waypoints": 30
+    }
+   ]
+  },
+  "Town15": {
+   "roads": 723,
+   "junctions": 168,
+   "presets": [
+    {
+     "id": "loop",
+     "name": "城市环线",
+     "length_km": 0.8,
+     "waypoints": 10
+    },
+    {
+     "id": "arterial",
+     "name": "干道直行",
+     "length_km": 1.35,
+     "waypoints": 44
+    },
+    {
+     "id": "cross",
+     "name": "跨图长途",
+     "length_km": 3.05,
+     "waypoints": 116
+    },
+    {
+     "id": "turns",
+     "name": "路口穿行",
+     "length_km": 1.46,
+     "waypoints": 48
+    }
+   ]
+  },
+  "Town_C": {
+   "roads": 567,
+   "junctions": 100,
+   "presets": [
+    {
+     "id": "loop",
+     "name": "城市环线",
+     "length_km": 0.8,
+     "waypoints": 10
+    },
+    {
+     "id": "arterial",
+     "name": "干道直行",
+     "length_km": 1.23,
+     "waypoints": 36
+    },
+    {
+     "id": "cross",
+     "name": "跨图长途",
+     "length_km": 2.95,
+     "waypoints": 72
+    },
+    {
+     "id": "turns",
+     "name": "路口穿行",
+     "length_km": 1.71,
+     "waypoints": 40
+    }
+   ]
+  }
+ }
+}

@@ -1,0 +1,838 @@
+{
+ "map": "Town05",
+ "xodr": "OpenDrive/Town05.xodr",
+ "roads": 323,
+ "junctions": 51,
+ "presets": [
+  {
+   "id": "loop",
+   "name": "城市环线",
+   "kind": "loop",
+   "note": "回到起点的闭环，适合反复起停与信号灯工况",
+   "length_m": 1173.1,
+   "roads": 5,
+   "waypoints": [
+    {
+     "road_id": 37,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 37,
+     "lane_id": -1,
+     "s": 813.84
+    },
+    {
+     "road_id": 2343,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 2343,
+     "lane_id": -1,
+     "s": 28.0
+    },
+    {
+     "road_id": 38,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 38,
+     "lane_id": -1,
+     "s": 299.24
+    },
+    {
+     "road_id": 2343,
+     "lane_id": -1,
+     "s": 28.0
+    },
+    {
+     "road_id": 2343,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 37,
+     "lane_id": -1,
+     "s": 813.84
+    },
+    {
+     "road_id": 37,
+     "lane_id": -1,
+     "s": 1.0
+    }
+   ]
+  },
+  {
+   "id": "arterial",
+   "name": "干道直行",
+   "kind": "arterial",
+   "note": "沿最长的连续干道直行，适合跟车与车速控制",
+   "length_m": 1974.4,
+   "roads": 27,
+   "waypoints": [
+    {
+     "road_id": 37,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 37,
+     "lane_id": -1,
+     "s": 813.84
+    },
+    {
+     "road_id": 2358,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 2358,
+     "lane_id": -1,
+     "s": 29.13
+    },
+    {
+     "road_id": 27,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 27,
+     "lane_id": -1,
+     "s": 20.67
+    },
+    {
+     "road_id": 2083,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 2083,
+     "lane_id": -1,
+     "s": 24.02
+    },
+    {
+     "road_id": 28,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 28,
+     "lane_id": -1,
+     "s": 26.92
+    },
+    {
+     "road_id": 2231,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 2231,
+     "lane_id": -1,
+     "s": 26.58
+    },
+    {
+     "road_id": 29,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 29,
+     "lane_id": -1,
+     "s": 44.02
+    },
+    {
+     "road_id": 26,
+     "lane_id": -1,
+     "s": 16.03
+    },
+    {
+     "road_id": 26,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 1674,
+     "lane_id": -1,
+     "s": 24.73
+    },
+    {
+     "road_id": 1674,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 25,
+     "lane_id": -1,
+     "s": 16.58
+    },
+    {
+     "road_id": 25,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 16,
+     "lane_id": -1,
+     "s": 45.64
+    },
+    {
+     "road_id": 16,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 1419,
+     "lane_id": -1,
+     "s": 24.46
+    },
+    {
+     "road_id": 1419,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 15,
+     "lane_id": -1,
+     "s": 1.24
+    },
+    {
+     "road_id": 15,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 14,
+     "lane_id": -1,
+     "s": 30.13
+    },
+    {
+     "road_id": 14,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 2306,
+     "lane_id": -1,
+     "s": 24.03
+    },
+    {
+     "road_id": 2306,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 13,
+     "lane_id": -1,
+     "s": 14.38
+    },
+    {
+     "road_id": 13,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 2052,
+     "lane_id": -1,
+     "s": 29.46
+    },
+    {
+     "road_id": 2052,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 36,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 36,
+     "lane_id": -1,
+     "s": 11.21
+    },
+    {
+     "road_id": 2034,
+     "lane_id": -1,
+     "s": 28.01
+    },
+    {
+     "road_id": 2034,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 35,
+     "lane_id": -1,
+     "s": 20.07
+    },
+    {
+     "road_id": 35,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 34,
+     "lane_id": -1,
+     "s": 275.2
+    },
+    {
+     "road_id": 34,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 12,
+     "lane_id": -1,
+     "s": 23.93
+    },
+    {
+     "road_id": 12,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 38,
+     "lane_id": -1,
+     "s": 299.24
+    },
+    {
+     "road_id": 38,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 2363,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 2363,
+     "lane_id": -1,
+     "s": 29.09
+    },
+    {
+     "road_id": 27,
+     "lane_id": -1,
+     "s": 20.67
+    },
+    {
+     "road_id": 27,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 2358,
+     "lane_id": -1,
+     "s": 29.13
+    },
+    {
+     "road_id": 2358,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 37,
+     "lane_id": -1,
+     "s": 813.84
+    },
+    {
+     "road_id": 37,
+     "lane_id": -1,
+     "s": 1.0
+    }
+   ]
+  },
+  {
+   "id": "cross",
+   "name": "跨图长途",
+   "kind": "cross",
+   "note": "拓扑上最远的两点，适合长距离导航与能耗统计",
+   "length_m": 1047.0,
+   "roads": 23,
+   "waypoints": [
+    {
+     "road_id": 37,
+     "lane_id": -1,
+     "s": 813.84
+    },
+    {
+     "road_id": 37,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 36,
+     "lane_id": -1,
+     "s": 11.21
+    },
+    {
+     "road_id": 36,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 2060,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 2060,
+     "lane_id": -1,
+     "s": 8.96
+    },
+    {
+     "road_id": 13,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 13,
+     "lane_id": -1,
+     "s": 14.38
+    },
+    {
+     "road_id": 2306,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 2306,
+     "lane_id": -1,
+     "s": 24.03
+    },
+    {
+     "road_id": 14,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 14,
+     "lane_id": -1,
+     "s": 30.13
+    },
+    {
+     "road_id": 15,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 15,
+     "lane_id": -1,
+     "s": 1.24
+    },
+    {
+     "road_id": 1419,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 1419,
+     "lane_id": -1,
+     "s": 24.46
+    },
+    {
+     "road_id": 16,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 16,
+     "lane_id": -1,
+     "s": 45.64
+    },
+    {
+     "road_id": 25,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 25,
+     "lane_id": -1,
+     "s": 16.58
+    },
+    {
+     "road_id": 1674,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 1674,
+     "lane_id": -1,
+     "s": 24.73
+    },
+    {
+     "road_id": 26,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 26,
+     "lane_id": -1,
+     "s": 16.03
+    },
+    {
+     "road_id": 29,
+     "lane_id": -1,
+     "s": 44.02
+    },
+    {
+     "road_id": 29,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 2231,
+     "lane_id": -1,
+     "s": 26.58
+    },
+    {
+     "road_id": 2231,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 28,
+     "lane_id": -1,
+     "s": 26.92
+    },
+    {
+     "road_id": 28,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 2083,
+     "lane_id": -1,
+     "s": 24.02
+    },
+    {
+     "road_id": 2083,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 27,
+     "lane_id": -1,
+     "s": 20.67
+    },
+    {
+     "road_id": 27,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 2370,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 2370,
+     "lane_id": -1,
+     "s": 17.71
+    },
+    {
+     "road_id": 38,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 38,
+     "lane_id": -1,
+     "s": 299.24
+    },
+    {
+     "road_id": 12,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 12,
+     "lane_id": -1,
+     "s": 23.93
+    },
+    {
+     "road_id": 34,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 34,
+     "lane_id": -1,
+     "s": 275.2
+    },
+    {
+     "road_id": 35,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 35,
+     "lane_id": -1,
+     "s": 20.07
+    },
+    {
+     "road_id": 2039,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 2039,
+     "lane_id": -1,
+     "s": 29.25
+    }
+   ]
+  },
+  {
+   "id": "turns",
+   "name": "路口穿行",
+   "kind": "turns",
+   "note": "高频路口转向，适合验证转向与让行逻辑",
+   "length_m": 992.3,
+   "roads": 24,
+   "waypoints": [
+    {
+     "road_id": 33,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 33,
+     "lane_id": -1,
+     "s": 113.46
+    },
+    {
+     "road_id": 1307,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 1307,
+     "lane_id": -1,
+     "s": 24.97
+    },
+    {
+     "road_id": 6,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 6,
+     "lane_id": -1,
+     "s": 53.36
+    },
+    {
+     "road_id": 1141,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 1141,
+     "lane_id": -1,
+     "s": 29.18
+    },
+    {
+     "road_id": 7,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 7,
+     "lane_id": -1,
+     "s": 44.47
+    },
+    {
+     "road_id": 184,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 184,
+     "lane_id": -1,
+     "s": 29.27
+    },
+    {
+     "road_id": 8,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 8,
+     "lane_id": -1,
+     "s": 31.03
+    },
+    {
+     "road_id": 183,
+     "lane_id": -1,
+     "s": 29.27
+    },
+    {
+     "road_id": 183,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 7,
+     "lane_id": -1,
+     "s": 44.47
+    },
+    {
+     "road_id": 7,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 1140,
+     "lane_id": -1,
+     "s": 29.18
+    },
+    {
+     "road_id": 1140,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 6,
+     "lane_id": -1,
+     "s": 53.36
+    },
+    {
+     "road_id": 6,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 1293,
+     "lane_id": -1,
+     "s": 25.07
+    },
+    {
+     "road_id": 1293,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 33,
+     "lane_id": -1,
+     "s": 113.46
+    },
+    {
+     "road_id": 33,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 32,
+     "lane_id": -1,
+     "s": 0.0
+    },
+    {
+     "road_id": 32,
+     "lane_id": -1,
+     "s": 0.95
+    },
+    {
+     "road_id": 789,
+     "lane_id": -1,
+     "s": 24.11
+    },
+    {
+     "road_id": 789,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 31,
+     "lane_id": -1,
+     "s": 0.0
+    },
+    {
+     "road_id": 31,
+     "lane_id": -1,
+     "s": 0.11
+    },
+    {
+     "road_id": 30,
+     "lane_id": -1,
+     "s": 112.13
+    },
+    {
+     "road_id": 30,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 2104,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 2104,
+     "lane_id": -1,
+     "s": 27.39
+    },
+    {
+     "road_id": 21,
+     "lane_id": -1,
+     "s": 52.62
+    },
+    {
+     "road_id": 21,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 2104,
+     "lane_id": -1,
+     "s": 27.39
+    },
+    {
+     "road_id": 2104,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 30,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 30,
+     "lane_id": -1,
+     "s": 112.13
+    },
+    {
+     "road_id": 2117,
+     "lane_id": -1,
+     "s": 27.36
+    },
+    {
+     "road_id": 2117,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 21,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 21,
+     "lane_id": -1,
+     "s": 52.62
+    },
+    {
+     "road_id": 2087,
+     "lane_id": -1,
+     "s": 27.36
+    },
+    {
+     "road_id": 2087,
+     "lane_id": -1,
+     "s": 1.0
+    }
+   ]
+  }
+ ]
+}

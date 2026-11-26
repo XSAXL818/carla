@@ -1,0 +1,238 @@
+{
+ "map": "Town11",
+ "xodr": "Town11/OpenDrive/Town11.xodr",
+ "roads": 2222,
+ "junctions": 411,
+ "presets": [
+  {
+   "id": "loop",
+   "name": "城市环线",
+   "kind": "loop",
+   "note": "回到起点的闭环，适合反复起停与信号灯工况",
+   "length_m": 1325.6,
+   "roads": 5,
+   "waypoints": [
+    {
+     "road_id": 247,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 247,
+     "lane_id": -1,
+     "s": 1294.22
+    },
+    {
+     "road_id": 1975,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 1975,
+     "lane_id": -1,
+     "s": 8.56
+    },
+    {
+     "road_id": 425,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 425,
+     "lane_id": -1,
+     "s": 10.23
+    },
+    {
+     "road_id": 1975,
+     "lane_id": -1,
+     "s": 8.56
+    },
+    {
+     "road_id": 1975,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 247,
+     "lane_id": -1,
+     "s": 1294.22
+    },
+    {
+     "road_id": 247,
+     "lane_id": -1,
+     "s": 1.0
+    }
+   ]
+  },
+  {
+   "id": "arterial",
+   "name": "干道直行",
+   "kind": "arterial",
+   "note": "沿最长的连续干道直行，适合跟车与车速控制",
+   "length_m": 1576.7,
+   "roads": 5,
+   "waypoints": [
+    {
+     "road_id": 477,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 477,
+     "lane_id": -1,
+     "s": 10930.98
+    },
+    {
+     "road_id": 296,
+     "lane_id": -1,
+     "s": 134.73
+    },
+    {
+     "road_id": 296,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 2362,
+     "lane_id": -1,
+     "s": 15.08
+    },
+    {
+     "road_id": 2362,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 295,
+     "lane_id": -1,
+     "s": 62.42
+    },
+    {
+     "road_id": 295,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 450,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 450,
+     "lane_id": -1,
+     "s": 1360.5
+    }
+   ]
+  },
+  {
+   "id": "cross",
+   "name": "跨图长途",
+   "kind": "cross",
+   "note": "拓扑上最远的两点，适合长距离导航与能耗统计",
+   "length_m": 3383.0,
+   "roads": 4,
+   "waypoints": [
+    {
+     "road_id": 4887,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 4887,
+     "lane_id": -1,
+     "s": 11.33
+    },
+    {
+     "road_id": 123,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 123,
+     "lane_id": -1,
+     "s": 482.73
+    },
+    {
+     "road_id": 279,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 279,
+     "lane_id": -1,
+     "s": 2886.22
+    },
+    {
+     "road_id": 4851,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 4851,
+     "lane_id": -1,
+     "s": 11.02
+    }
+   ]
+  },
+  {
+   "id": "turns",
+   "name": "路口穿行",
+   "kind": "turns",
+   "note": "高频路口转向，适合验证转向与让行逻辑",
+   "length_m": 7584.9,
+   "roads": 5,
+   "waypoints": [
+    {
+     "road_id": 122,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 122,
+     "lane_id": -1,
+     "s": 7075.53
+    },
+    {
+     "road_id": 4888,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 4888,
+     "lane_id": -1,
+     "s": 11.33
+    },
+    {
+     "road_id": 123,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 123,
+     "lane_id": -1,
+     "s": 482.73
+    },
+    {
+     "road_id": 4887,
+     "lane_id": -1,
+     "s": 11.33
+    },
+    {
+     "road_id": 4887,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 122,
+     "lane_id": -1,
+     "s": 7075.53
+    },
+    {
+     "road_id": 122,
+     "lane_id": -1,
+     "s": 1.0
+    }
+   ]
+  }
+ ]
+}

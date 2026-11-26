@@ -1,0 +1,278 @@
+{
+ "map": "Eixample",
+ "xodr": "Twins/Eixample/OpenDrive/Eixample.xodr",
+ "roads": 195,
+ "junctions": 34,
+ "presets": [
+  {
+   "id": "loop",
+   "name": "城市环线",
+   "kind": "loop",
+   "note": "回到起点的闭环，适合反复起停与信号灯工况",
+   "length_m": 592.9,
+   "roads": 9,
+   "waypoints": [
+    {
+     "road_id": 16,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 16,
+     "lane_id": -1,
+     "s": 108.1
+    },
+    {
+     "road_id": 110,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 110,
+     "lane_id": -1,
+     "s": 51.78
+    },
+    {
+     "road_id": 5,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 5,
+     "lane_id": -1,
+     "s": 111.91
+    },
+    {
+     "road_id": 132,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 132,
+     "lane_id": -1,
+     "s": 20.55
+    },
+    {
+     "road_id": 29,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 29,
+     "lane_id": -1,
+     "s": 108.33
+    },
+    {
+     "road_id": 136,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 136,
+     "lane_id": -1,
+     "s": 20.55
+    },
+    {
+     "road_id": 5,
+     "lane_id": -1,
+     "s": 111.91
+    },
+    {
+     "road_id": 5,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 110,
+     "lane_id": -1,
+     "s": 51.78
+    },
+    {
+     "road_id": 110,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 16,
+     "lane_id": -1,
+     "s": 108.1
+    },
+    {
+     "road_id": 16,
+     "lane_id": -1,
+     "s": 1.0
+    }
+   ]
+  },
+  {
+   "id": "turns",
+   "name": "路口穿行",
+   "kind": "turns",
+   "note": "高频路口转向，适合验证转向与让行逻辑",
+   "length_m": 490.0,
+   "roads": 16,
+   "waypoints": [
+    {
+     "road_id": 12,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 12,
+     "lane_id": -1,
+     "s": 116.08
+    },
+    {
+     "road_id": 157,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 157,
+     "lane_id": -1,
+     "s": 30.01
+    },
+    {
+     "road_id": 32,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 32,
+     "lane_id": -1,
+     "s": 116.5
+    },
+    {
+     "road_id": 141,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 141,
+     "lane_id": -1,
+     "s": 32.79
+    },
+    {
+     "road_id": 38,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 38,
+     "lane_id": -1,
+     "s": 71.76
+    },
+    {
+     "road_id": 45,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 45,
+     "lane_id": -1,
+     "s": 37.28
+    },
+    {
+     "road_id": 64,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 64,
+     "lane_id": -1,
+     "s": 2.74
+    },
+    {
+     "road_id": 63,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 63,
+     "lane_id": -1,
+     "s": 2.69
+    },
+    {
+     "road_id": 62,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 62,
+     "lane_id": -1,
+     "s": 2.74
+    },
+    {
+     "road_id": 40,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 40,
+     "lane_id": -1,
+     "s": 10.23
+    },
+    {
+     "road_id": 176,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 176,
+     "lane_id": -1,
+     "s": 12.64
+    },
+    {
+     "road_id": 9,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 9,
+     "lane_id": -1,
+     "s": 40.35
+    },
+    {
+     "road_id": 180,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 180,
+     "lane_id": -1,
+     "s": 14.92
+    },
+    {
+     "road_id": 10,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 10,
+     "lane_id": -1,
+     "s": 33.26
+    },
+    {
+     "road_id": 186,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 186,
+     "lane_id": -1,
+     "s": 44.95
+    },
+    {
+     "road_id": 20,
+     "lane_id": -1,
+     "s": 1.0
+    },
+    {
+     "road_id": 20,
+     "lane_id": -1,
+     "s": 22.1
+    }
+   ]
+  }
+ ]
+}
