@@ -66,7 +66,7 @@
 | POST | `/sessions/{id}/destroy` | 清理演员并停会话 |
 | POST | `/sessions/{id}/weather` | 运行中切换天气 |
 | POST | `/sessions/{id}/route` | 运行中显示/隐藏路线、切换预设 |
-| GET | `/sessions/{id}/summary` | 下载 `summary.json` |
+| GET | `/sessions/{id}/summary` | 内联返回 `summary.json` 的内容（JSON 响应，不是文件下载） |
 | GET | `/sessions/{id}/metrics.csv` | 下载 `metrics.csv` |
 | GET | `/sessions/{id}/events.json` | 事件数组 + 计数 |
 | GET | `/sessions/{id}/rec.log` | 下载 CARLA recorder 文件 |
@@ -158,7 +158,7 @@
 ## 6. 路线：`(road_id, lane_id, s)` 序列
 
 - **定义**：路点三元组正是 `carla.Waypoint` 的三要素，`map.get_waypoint_xodr(road_id, lane_id, s)` 可直接解析。
-- **4 条预设/图**：由 `tools/gen_route_presets.py` 从 OpenDRIVE 拓扑离线生成（已产出 `backend/data/routes/*.json`）：
+- **界面展示的 9 张图各 4 条预设**：由 `tools/gen_route_presets.py` 从 OpenDRIVE 拓扑离线生成（已产出 `backend/data/routes/*.json`）：
 
   | 预设 id | 名称 | 选取策略 |
   |---|---|---|
@@ -171,7 +171,9 @@
   Town05 `1.17 1.97 1.05 0.99`，Town10HD `0.50 0.63 0.53 1.05`，Town12 `1.39 1.30 4.73 2.04`，
   Town13 `1.31 2.38 4.87 1.87`（全表见 `backend/data/routes/index.json`）。
   `data/routes/` 现有 15 张图的预设；界面只展示 `ALLOWED_MAPS` 里的 9 张
-  （Town01–Town07、Town10HD、Town_C），`EXCLUDED_MAPS` 中的 Town11–13 与 EmptyMap 不列出。
+  （Town01–Town07、Town10HD、Town_C），这 9 张都是 4 条。`EXCLUDED_MAPS` 中的 Town11–13 与 EmptyMap
+  不列出；其余 Eixample、Mine_01、Town15 也不在界面里，其中 Eixample 只生成出 `loop` 与 `turns` 两条，
+  Mine_01 与 Town15 各 4 条。
 
 - **路点解析**：后端启动前逐个路点调用 `map.get_waypoint_xodr(road_id, lane_id, s)`；`lane_id` 为 -1 时
   依次尝试候选车道并优先 `LaneType.Driving`。解析不到就报错，不做整段连通性校验。

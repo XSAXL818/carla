@@ -19,7 +19,6 @@ public class TestPlatform : ModuleRules
 			"SlateCore",
 			"ApplicationCore",
 			"HTTP",
-			"Sockets",
 			"Json",
 			"JsonUtilities",
 			"Projects"

@@ -17,10 +17,13 @@ param(
     [string]$Backend = 'http://127.0.0.1:8765'
 )
 
-# Same normalisation as FTestPlatformApi::RootUrl(): trim, add http:// when the
-# scheme is missing, drop the trailing slash. The health probe, the stale-session
-# cleanup, the backend this script starts and the editor switch all use the result,
-# so the script and the module cannot disagree about the endpoint.
+# Normalisation follows FTestPlatformApi::RootUrl(): trim, add http:// when the
+# scheme is missing, drop the trailing slash. It is deliberately stricter on one
+# point: RootUrl() keeps the default base when nothing usable is left (e.g.
+# "http://"), here the value fails loudly instead. The endpoint was typed by an
+# operator, so a typo must stop the launch rather than silently run against a
+# backend that was not asked for; and whatever is probed, exported to the child
+# process and passed as -TestPlatformBackend= is this one string.
 function ConvertTo-BackendUrl {
     param([string]$Url)
     $text = "$Url".Trim()
