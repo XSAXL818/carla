@@ -95,23 +95,51 @@ static TAutoConsoleVariable<int32> CVarCarlaMultiGpuVerifyFrames(
     ECVF_Default);
 #endif // !UE_BUILD_SHIPPING
 
-/// Synchronous mode: how long to wait for the next tick cue before giving up on
-/// the client and returning to asynchronous mode. 0 waits forever, which is the
-/// upstream CARLA contract.
+/// Synchronous mode: how long to wait for the next tick cue before returning to
+/// asynchronous mode. Two independent thresholds, both in seconds, both disabled
+/// by 0 — and both bounded, because the game thread cannot wait forever:
 ///
-/// The timeout is a *backstop*, not the arbitration: it only fires once the RPC
-/// port has no client connection left (see QuerySyncClientPresence). A client
-/// that is merely slow — a heavy agent step, a debugger pause, a suspended or
-/// descheduled process — keeps its rpclib session ESTABLISHED and is waited
-/// for, however long its gap, because that is what synchronous mode *is*.
+///  - carla.SyncCueGrace: the polite threshold. It only fires once the RPC port
+///    has no client connection left (see QuerySyncClientPresence). A client that
+///    is merely slow — a heavy agent step, a debugger pause, a suspended or
+///    descheduled process — keeps its rpclib session ESTABLISHED and is waited
+///    for, however long its gap, because that is what synchronous mode *is*.
+///  - carla.SyncCueCeiling: the guarantee. It fires regardless of connections.
+///    "Any connection exists" is not "the client that cues is alive": a second
+///    client (a monitor, a notebook, another tool) holding the RPC port keeps
+///    the grace from ever firing, so a killed cue-ing client would freeze the
+///    editor forever. The ceiling bounds that wait unconditionally.
+///
+/// Both at 0 is upstream CARLA's "wait forever".
+static TAutoConsoleVariable<float> CVarCarlaSyncCueGrace(
+    TEXT("carla.SyncCueGrace"),
+    60.0f,
+    TEXT("Synchronous mode: seconds without a tick cue before the simulator returns to asynchronous mode, ")
+    TEXT("once no client is connected to the RPC port any more (0 = no grace-based recovery; default 60). ")
+    TEXT("A slow but still connected client is never ejected by this threshold; see carla.SyncCueCeiling ")
+    TEXT("for the bound that applies even while clients are connected."),
+    ECVF_Default);
+
+static TAutoConsoleVariable<float> CVarCarlaSyncCueCeiling(
+    TEXT("carla.SyncCueCeiling"),
+    300.0f,
+    TEXT("Synchronous mode: seconds without a tick cue after which the simulator returns to asynchronous ")
+    TEXT("mode regardless of any client still connected to the RPC port (0 = never; default 300). ")
+    TEXT("This is the guarantee that a cue-ing client that died cannot freeze the game thread forever ")
+    TEXT("just because another client holds a connection. Firing logs an Error and clears ")
+    TEXT("synchronous_mode and fixed_delta_seconds under the clients."),
+    ECVF_Default);
+
+/// Pre-ceiling name of the grace threshold, kept so an existing
+/// `carla.SyncCueTimeout` setting still means what it did: unset (-1) defers to
+/// carla.SyncCueGrace; 0 disables the whole watchdog (both thresholds), which is
+/// upstream CARLA's wait forever; a value above 0 overrides the grace.
 static TAutoConsoleVariable<float> CVarCarlaSyncCueTimeout(
     TEXT("carla.SyncCueTimeout"),
-    60.0f,
-    TEXT("Synchronous mode: seconds without a tick cue before the simulator returns to asynchronous mode ")
-    TEXT("(0 = wait forever, the upstream CARLA behaviour; default 60). ")
-    TEXT("Firing also requires that no client is connected to the RPC port, so a slow but connected ")
-    TEXT("client is never ejected. Firing clears synchronous_mode and fixed_delta_seconds under the ")
-    TEXT("clients and logs an Error naming that consequence."),
+    -1.0f,
+    TEXT("Legacy alias of carla.SyncCueGrace: -1 (default) defers to it; 0 disables the whole synchronous ")
+    TEXT("watchdog, both thresholds included, i.e. waits forever as upstream CARLA does; a value above 0 ")
+    TEXT("overrides the grace threshold (the ceiling still bounds the wait)."),
     ECVF_Default);
 
 namespace
@@ -1044,10 +1072,18 @@ void FCarlaEngine::OnPreTick(UWorld *World, ELevelTick TickType, float DeltaSeco
   // A synchronous client that dies (the test platform backend window is closed,
   // or the process is killed) can never send the next tick cue, and waiting for
   // it freezes the game thread, and with it the panel that has to report the
-  // disconnection. So a wait that outlives carla.SyncCueTimeout gives up on it —
-  // but only once no client is connected to the RPC port any more, because a
-  // client that is merely slow must not be silently ejected from synchronous
-  // mode (its session then advances behind its back at the wrong delta).
+  // disconnection. Two thresholds bound that wait (see the cvars above):
+  //
+  //  - carla.SyncCueGrace: give up once no client is connected to the RPC port
+  //    any more. A client that is merely slow keeps its connection and is
+  //    waited for, because that is what synchronous mode is.
+  //  - carla.SyncCueCeiling: give up regardless of connections. "Somebody is
+  //    connected" is not "the client that cues is alive": a second client
+  //    holding the port (a monitor, a notebook, another tool) must not turn a
+  //    dead cue-ing client into an unbounded freeze. This is the guarantee.
+  //
+  // 0 disables a threshold; carla.SyncCueTimeout=0 disables both (upstream
+  // CARLA's wait forever).
   const double SyncWaitStarted = FPlatformTime::Seconds();
   ESyncClientPresence ClientPresence = ESyncClientPresence::Unknown;
   double PresenceCheckedAt = 0.0;
@@ -1055,12 +1091,45 @@ void FCarlaEngine::OnPreTick(UWorld *World, ELevelTick TickType, float DeltaSeco
   do
   {
     Server.RunSome(1u);
-    const float SyncCueTimeoutSeconds = CVarCarlaSyncCueTimeout.GetValueOnGameThread();
-    if (bSynchronousMode && SyncCueTimeoutSeconds > 0.0f)
+    // carla.SyncCueTimeout is the pre-ceiling name of the grace: unset (-1)
+    // defers to carla.SyncCueGrace, 0 turns the whole watchdog off, and a
+    // value above 0 overrides the grace.
+    const float LegacySyncCueTimeoutSeconds = CVarCarlaSyncCueTimeout.GetValueOnGameThread();
+    float SyncCueGraceSeconds = CVarCarlaSyncCueGrace.GetValueOnGameThread();
+    if (LegacySyncCueTimeoutSeconds > 0.0f)
+    {
+      SyncCueGraceSeconds = LegacySyncCueTimeoutSeconds;
+    }
+    const TCHAR *const GraceCvarName = (LegacySyncCueTimeoutSeconds > 0.0f)
+        ? TEXT("carla.SyncCueTimeout")
+        : TEXT("carla.SyncCueGrace");
+    const float SyncCueCeilingSeconds = CVarCarlaSyncCueCeiling.GetValueOnGameThread();
+    const bool bWatchdogEnabled = LegacySyncCueTimeoutSeconds != 0.0f;
+    const bool bGraceEnabled = bWatchdogEnabled && (SyncCueGraceSeconds > 0.0f);
+    const bool bCeilingEnabled = bWatchdogEnabled && (SyncCueCeilingSeconds > 0.0f);
+    if (bSynchronousMode && (bGraceEnabled || bCeilingEnabled))
     {
       const double Now = FPlatformTime::Seconds();
       const double WaitedSeconds = Now - SyncWaitStarted;
-      if (WaitedSeconds > SyncCueTimeoutSeconds)
+      bool bAbandonWait = false;
+      if (bCeilingEnabled && (WaitedSeconds > SyncCueCeilingSeconds))
+      {
+        // The guarantee. Say plainly that connections may still exist: this is
+        // not "the client is gone", it is "the cue-ing client has been silent
+        // beyond the ceiling".
+        UE_LOG(LogCarla, Error,
+            TEXT("Synchronous mode lost: no tick cue for %.0f s, which reached carla.SyncCueCeiling "
+                 "(%.0f s). A client may still be connected to RPC port %u, but a client that has not "
+                 "cued for this long is treated as gone so the game thread cannot stay frozen forever. "
+                 "Returning to asynchronous mode: clients now read synchronous_mode=false and "
+                 "fixed_delta_seconds=None, so a client that samples or records at a fixed delta is no "
+                 "longer driven by this server. Raise carla.SyncCueCeiling (currently %.0f s) if a live "
+                 "client legitimately pauses that long, or set it to 0 to never bound the wait."),
+            WaitedSeconds, SyncCueCeilingSeconds, static_cast<uint32>(RPCPort),
+            SyncCueCeilingSeconds);
+        bAbandonWait = true;
+      }
+      else if (bGraceEnabled && (WaitedSeconds > SyncCueGraceSeconds))
       {
         // The OS query is cheap but not free: once a second is far more than
         // enough to notice a connection that went away.
@@ -1077,9 +1146,11 @@ void FCarlaEngine::OnPreTick(UWorld *World, ELevelTick TickType, float DeltaSeco
             UE_LOG(LogCarla, Warning,
                 TEXT("No tick cue for %.0f s in synchronous mode, but a client is still connected "
                      "to RPC port %u: waiting for it (synchronous mode lets a live client set the pace, "
-                     "so the world is paused, not wedged). carla.SyncCueTimeout=%.0f, set it to 0 to "
-                     "wait forever."),
-                WaitedSeconds, static_cast<uint32>(RPCPort), SyncCueTimeoutSeconds);
+                     "so the world is paused, not wedged). %s=%.0f s; the wait is still bounded by "
+                     "carla.SyncCueCeiling=%.0f s (0 = never), which returns the world to asynchronous "
+                     "mode even while clients stay connected."),
+                WaitedSeconds, static_cast<uint32>(RPCPort), GraceCvarName, SyncCueGraceSeconds,
+                SyncCueCeilingSeconds);
           }
         }
         else
@@ -1090,23 +1161,27 @@ void FCarlaEngine::OnPreTick(UWorld *World, ELevelTick TickType, float DeltaSeco
               TEXT("Synchronous mode lost: no tick cue for %.0f s and %s. Returning to asynchronous "
                    "mode so the game thread keeps running: clients now read synchronous_mode=false "
                    "and fixed_delta_seconds=None, so a client that samples or records at a fixed "
-                   "delta is no longer driven by this server. Raise carla.SyncCueTimeout (currently "
-                   "%.0f s) or set it to 0 to wait forever."),
+                   "delta is no longer driven by this server. Raise %s (currently %.0f s) or set both "
+                   "carla.SyncCueGrace and carla.SyncCueCeiling to 0 to wait forever."),
               WaitedSeconds,
               (ClientPresence == ESyncClientPresence::Absent)
                   ? TEXT("no client is connected to the RPC port any more")
                   : TEXT("this platform cannot tell whether a client is connected"),
-              SyncCueTimeoutSeconds);
-          CurrentSettings.bSynchronousMode = false;
-          CurrentSettings.FixedDeltaSeconds.Reset();
-          bSynchronousMode = false;
-          Server.GetStreamingServer().SetSynchronousMode(false);
-          if (CurrentEpisode != nullptr)
-          {
-            CurrentEpisode->ApplySettings(CurrentSettings);
-          }
-          break;
+              GraceCvarName, SyncCueGraceSeconds);
+          bAbandonWait = true;
         }
+      }
+      if (bAbandonWait)
+      {
+        CurrentSettings.bSynchronousMode = false;
+        CurrentSettings.FixedDeltaSeconds.Reset();
+        bSynchronousMode = false;
+        Server.GetStreamingServer().SetSynchronousMode(false);
+        if (CurrentEpisode != nullptr)
+        {
+          CurrentEpisode->ApplySettings(CurrentSettings);
+        }
+        break;
       }
     }
   }
