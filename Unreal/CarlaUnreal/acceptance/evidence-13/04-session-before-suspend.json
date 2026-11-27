@@ -1,0 +1,50 @@
+{
+  "id": "20261128-043919-c15c06",
+  "state": "preview",
+  "error": null,
+  "map": "Town10HD",
+  "tick": 22,
+  "sim_time": 7.333,
+  "traffic": 0,
+  "walkers": 0,
+  "preview_degraded": false,
+  "sync_mode": true,
+  "fixed_delta": 0.33333,
+  "sync_lost": false,
+  "sync_lost_detail": null,
+  "sync_reasserts": 0,
+  "ego": {
+    "x": -56.863853454589844,
+    "y": 140.5300750732422,
+    "z": 0.11777792870998383,
+    "yaw": 14.234820365905762,
+    "speed_kmh": 0.0,
+    "control": {
+      "throttle": 0.0,
+      "brake": 0.0,
+      "steer": 0.0,
+      "hand_brake": false,
+      "gear": 0
+    }
+  },
+  "cameras": {
+    "preview": {
+      "x": -229.22592163085938,
+      "y": 3624.5223999023438,
+      "z": 67618.42151507986,
+      "pitch": -89.5,
+      "yaw": 0.0,
+      "roll": 0.0
+    },
+    "follow": {
+      "x": -6849.540653715144,
+      "y": 13757.931705409663,
+      "z": 1811.7777928709984,
+      "pitch": -62.0,
+      "yaw": 14.234820365905762,
+      "roll": 0.0
+    }
+  },
+  "events": 0,
+  "output_dir": "C:\\GameProject\\CarlaUE5\\carla\\Unreal\\CarlaUnreal\\Source\\TestPlatform\\Platform\\runs\\20261128-043919-c15c06"
+}

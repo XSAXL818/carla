@@ -1,0 +1,5 @@
+﻿#TYPE System.Management.Automation.PSCustomObject
+"t","state","sync_mode","sync_lost","fixed_delta","tick","sim_time","events","reasserts"
+"0.1","preview","False","True",,"878","292.667","19","27"
+"0.6","preview","False","True",,"880","293.0","19","27"
+"0.9","preview","False","True",,"880","293.333","19","27"

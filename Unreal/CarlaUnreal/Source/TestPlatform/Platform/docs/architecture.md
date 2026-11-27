@@ -274,7 +274,8 @@ UE 侧 C++ 负责：把 Slate 面板挂到 game viewport、按后端状态驱动
 - `wt.exe -w -1 nt ... -d "<backend 目录>"` 开的是**独立窗口**，不是塞进操作员已开窗口的标签页——否则“关窗口”会连别人的标签一起关掉；
 - 窗口里跑 `cmd /k "chcp 65001>nul && <python> run.py"`：`cmd /k` 让 python 退出后窗口还留着，traceback 不会跟着一起消失；
 - stdout/stderr 就是这个窗口的实时输出（面板不再持有管道），`TESTPLATFORM_HOST` / `TESTPLATFORM_PORT` 照旧在拉起前写进环境，后端仍绑面板探测的那个端点；
-- 关掉窗口 = 停掉后端：控制台一关，python 随之结束，8765 不再监听，面板下一次 `/health` 探不到就显示“配置后端未运行”（顶部服务器小条此时是 `未知`，因为探测本身没有应答，见 `STestPlatformUI::UpdateChrome` 里 未知/未连接 的区分）；如果关窗时预览会话正把世界置于同步模式，引擎在 15 s 收不到 tick cue 后自动回退到异步模式（`FCarlaEngine::OnPreTick`），不会把编辑器一起卡死，面板随后照常刷新；
+- 关掉窗口 = 停掉后端：控制台一关，python 随之结束，8765 不再监听，面板下一次 `/health` 探不到就显示“配置后端未运行”（顶部服务器小条此时是 `未知`，因为探测本身没有应答，见 `STestPlatformUI::UpdateChrome` 里 未知/未连接 的区分）；会话条与同步条也随之变中性（`会话 · 未知` / `同步模式 · —`），不再重复最后一次应答；
+- 关窗时预览会话正把世界置于同步模式也不会永久卡死：`FCarlaEngine::OnPreTick` 的同步等待会先问操作系统“RPC 端口上还有客户端连接吗”（`QuerySyncClientPresence`，Windows 下读 `GetExtendedTcpTable` 的 ESTABLISHED 表项），只有**确实没有连接**、且等待超过 `carla.SyncCueTimeout`（默认 60 s，`0` = 永久等待，即上游 CARLA 语义）时才回退到异步模式，并打 Error 说明后果（客户端会读到 `synchronous_mode=false`、`fixed_delta_seconds=None`）。**已知代价**：进程被挂起/调试器暂停的活客户端连接是 ESTABLISHED，不会被踢；但非 Windows 平台、或拿不到 TCP 表时这个信号不可用（`Unknown`），那时只靠超时判定，一个**只是慢**的活客户端也会在超时后被切到异步模式——把 `carla.SyncCueTimeout=0` 关掉这个兜底，或调大它；
 - 手动关窗之后不会被重拉：一次性闩锁 `bBackendSpawnAttempted` 仍然只在第一次拉发起前置位，没有任何重试路径；
 - 编辑器退出**不杀**这个进程（`ShutdownModule` 不碰它，也不放 job object 里），窗口留在操作员手里。
 

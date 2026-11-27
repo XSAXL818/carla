@@ -582,6 +582,15 @@ FSessionStatus FTestPlatformApi::ParseStatus(const TSharedPtr<FJsonObject>& Root
 	Status.Events = static_cast<int32>(NumberField(Root, TEXT("events")));
 	Status.SimTime = static_cast<float>(NumberField(Root, TEXT("sim_time")));
 
+	// The clock the session is really running at (see FSessionStatus): parsed
+	// here too so every caller sees the same truth as the /sessions/current poll.
+	bool bSyncMode = false;
+	Status.bSyncMode = Root->TryGetBoolField(TEXT("sync_mode"), bSyncMode) && bSyncMode;
+	bool bSyncLost = false;
+	Status.bSyncLost = Root->TryGetBoolField(TEXT("sync_lost"), bSyncLost) && bSyncLost;
+	Status.FixedDelta = static_cast<float>(NumberField(Root, TEXT("fixed_delta")));
+	Status.SyncLostDetail = StringField(Root, TEXT("sync_lost_detail"));
+
 	const TSharedPtr<FJsonObject>* Ego = nullptr;
 	if (Root->TryGetObjectField(TEXT("ego"), Ego) && Ego && Ego->IsValid())
 	{

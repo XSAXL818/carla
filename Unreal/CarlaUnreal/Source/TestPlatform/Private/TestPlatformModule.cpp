@@ -883,6 +883,19 @@ void FTestPlatformModule::HandleSessionState(
 		if (Root->TryGetNumberField(TEXT("tick"), Tick)) { Status.Tick = static_cast<int32>(Tick); }
 		if (Root->TryGetNumberField(TEXT("events"), Events)) { Status.Events = static_cast<int32>(Events); }
 		if (Root->TryGetNumberField(TEXT("sim_time"), SimTime)) { Status.SimTime = static_cast<float>(SimTime); }
+		// The clock the session is really running at: the sync chip is painted
+		// from this, so it cannot keep claiming a fixed delta the simulator has
+		// dropped.
+		bool bSyncMode = false;
+		Status.bSyncMode = Root->TryGetBoolField(TEXT("sync_mode"), bSyncMode) && bSyncMode;
+		bool bSyncLost = false;
+		Status.bSyncLost = Root->TryGetBoolField(TEXT("sync_lost"), bSyncLost) && bSyncLost;
+		double FixedDelta = 0.0;
+		if (Root->TryGetNumberField(TEXT("fixed_delta"), FixedDelta))
+		{
+			Status.FixedDelta = static_cast<float>(FixedDelta);
+		}
+		Root->TryGetStringField(TEXT("sync_lost_detail"), Status.SyncLostDetail);
 		const TSharedPtr<FJsonObject>* Ego = nullptr;
 		if (Root->TryGetObjectField(TEXT("ego"), Ego) && Ego && Ego->IsValid())
 		{

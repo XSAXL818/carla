@@ -103,6 +103,17 @@ struct FSessionStatus
 	int32 Events = 0;
 	float SimTime = 0.f;
 	float SpeedKmh = 0.f;
+	/**
+	 * The clock the backend says the session is really running at. The simulator
+	 * can drop synchronous mode under a live session (the engine's
+	 * carla.SyncCueTimeout, or another client applying settings), and then there
+	 * is no fixed delta any more: the panel must stop printing one rather than
+	 * keep the value it saw when the session started.
+	 */
+	bool bSyncMode = false;
+	bool bSyncLost = false;
+	float FixedDelta = 0.f;
+	FString SyncLostDetail;
 
 	bool IsRunning() const { return State == TEXT("running"); }
 	bool IsPreviewing() const { return State == TEXT("preview") || State == TEXT("preview_loading"); }

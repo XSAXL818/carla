@@ -1,0 +1,15 @@
+== old code: the expression the loop used to run ==
+  1.0 + None -> TypeError: unsupported operand type(s) for +=: 'float' and 'NoneType'   (this set state=error and broke the loop)
+== new code: Session._loop against a world that loses sync mode ==
+[session 20261128-044827-2d8b64] 模拟器不再处于同步模式（fixed_delta_seconds 为空）：仿真继续运行，指标按最后已知步长 0.3333 s 计时
+state=preview error=None tick=9 sim_time=3.0 sync_mode=True fixed_delta=0.33333 sync_lost=False reasserts=1
+world.applies=1 (re-asserted settings)
+events=2
+  t=1.667 kind=sync_mode_lost detail=模拟器不再处于同步模式（fixed_delta_seconds 为空）：仿真继续运行，指标按最后已知步长 0.3333 s 计时
+  t=2.000 kind=sync_mode_restored detail=同步模式已恢复，固定步长 0.3333 s
+CHECK PASS: loop stayed out of error
+CHECK PASS: sim_time advanced
+CHECK PASS: ticks advanced
+CHECK PASS: loss recorded
+CHECK PASS: settings re-asserted
+CHECK PASS: sync restored after re-assert

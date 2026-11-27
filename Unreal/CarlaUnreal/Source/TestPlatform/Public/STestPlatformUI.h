@@ -160,6 +160,8 @@ private:
 	TSharedPtr<STextBlock> ServerChipText;
 	/** the square in front of ServerChipText; painted from the same /health state */
 	TSharedPtr<SBorder> ServerDot;
+	/** 同步模式 chip: the clock the backend reports, never a constant */
+	TSharedPtr<STextBlock> SyncChipText;
 	TSharedPtr<SBox> LoadingBox;
 	TSharedPtr<STextBlock> LoadingText;
 	TSharedPtr<SEditableTextBox> SearchBox;
@@ -184,6 +186,8 @@ private:
 	bool bLoadingMap = false;
 	bool bListsBuilt = false;
 	bool bLastBackendReady = false;
+	/** last chrome state pushed to the top bar: did /health answer? */
+	bool bLastBackendReachable = false;
 	/** last chrome state pushed to the top bar: CARLA's connection is live */
 	bool bLastCarlaConnected = false;
 	bool bLastCarlaKnown = false;

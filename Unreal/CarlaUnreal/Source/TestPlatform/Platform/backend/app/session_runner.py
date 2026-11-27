@@ -27,6 +27,11 @@ from . import carla_bridge, catalog, paths
 
 PREVIEW_HZ = 3.0          # slow tick while configuring
 PREVIEW_FALLBACK_HZ = 0.5  # used when the preview tick cannot keep its budget
+# Steps the clock with this delta when the simulator will not say what the tick
+# advanced (its fixed delta is gone: synchronous mode was lost). The loop keeps
+# running and the loss is recorded in the session status and events; it is not a
+# reason to end the session.
+DEFAULT_FIXED_DELTA = 1.0 / 20.0
 _STOPPED = {"stopped", "finished", "error", "created"}
 
 
@@ -84,6 +89,17 @@ class Session:
         self.show_route = bool(config.get("run", {}).get("show_route", True))
         self._route_points: list = []
         self._route_color = None
+        # What the simulator confirmed about the clock. `_fixed_delta` is the
+        # last delta it really ran at, so losing synchronous mode degrades the
+        # metrics to "last known delta" instead of killing the loop with a
+        # None.
+        self._fixed_delta: float | None = None
+        self._requested_delta: float | None = None
+        self.sync_lost = False
+        self.sync_lost_detail: str | None = None
+        self.sync_lost_at: float | None = None
+        self.sync_reasserts = 0
+        self._last_reassert_at = 0.0
 
     # ------------------------------------------------------------------ #
     # config helpers
@@ -140,6 +156,77 @@ class Session:
         settings.synchronous_mode = True
         settings.fixed_delta_seconds = 1.0 / max(0.1, hz)
         self.world.apply_settings(settings)
+        self._requested_delta = 1.0 / max(0.1, hz)
+        self._fixed_delta = self._requested_delta
+
+    def _tick_delta(self) -> float:
+        """Seconds this tick advanced; never ``None``.
+
+        ``world.get_settings().fixed_delta_seconds`` is the delta the world is
+        running at, but it is not guaranteed to exist: the simulator drops out of
+        synchronous mode on its own (``carla.SyncCueTimeout``, or another client
+        applying asynchronous settings) and then reports
+        ``fixed_delta_seconds = None``. Doing ``self.sim_time += None`` killed the
+        tick loop and turned a lost sync mode into ``state=error``, so the loop
+        keeps running on the last delta it actually saw and records the loss.
+        """
+        delta = None
+        try:
+            delta = self.world.get_settings().fixed_delta_seconds
+        except Exception:  # noqa: BLE001  (a lost world must not kill the loop either)
+            delta = None
+        if delta is not None and delta > 0.0:
+            delta = float(delta)
+            self._fixed_delta = delta
+            if self.sync_lost:
+                self.sync_lost = False
+                self.sync_lost_detail = None
+                self.events.append({
+                    "t": self.sim_time,
+                    "kind": "sync_mode_restored",
+                    "detail": f"同步模式已恢复，固定步长 {delta:.4f} s",
+                })
+            return delta
+
+        # Synchronous mode is gone: record it once, ask for it back, keep going.
+        if not self.sync_lost:
+            self.sync_lost = True
+            self.sync_lost_at = time.time()
+            self.sync_lost_detail = (
+                "模拟器不再处于同步模式（fixed_delta_seconds 为空）：仿真继续运行，"
+                f"指标按最后已知步长 {self._fallback_delta():.4f} s 计时")
+            self.events.append({
+                "t": self.sim_time,
+                "kind": "sync_mode_lost",
+                "detail": self.sync_lost_detail,
+            })
+            print(f"[session {self.id}] {self.sync_lost_detail}", flush=True)
+        self._reassert_sync()
+        return self._fallback_delta()
+
+    def _fallback_delta(self) -> float:
+        if self._fixed_delta and self._fixed_delta > 0.0:
+            return float(self._fixed_delta)
+        if self._requested_delta and self._requested_delta > 0.0:
+            return float(self._requested_delta)
+        return DEFAULT_FIXED_DELTA
+
+    def _reassert_sync(self) -> None:
+        """Ask for the intended settings back, at most every 2 s.
+
+        The engine drops synchronous mode when it gives up on a client; a client
+        that is alive again (resumed, reconnected) re-applies what it wanted
+        instead of silently running free for the rest of the session.
+        """
+        now = time.time()
+        if now - self._last_reassert_at < 2.0:
+            return
+        self._last_reassert_at = now
+        self.sync_reasserts += 1
+        try:
+            self._set_settings(self._target_hz)
+        except Exception:  # noqa: BLE001  (the next tick retries)
+            pass
 
     def _run_async(self) -> None:
         """Spawn requests complete on a server tick; in synchronous mode nobody
@@ -709,7 +796,9 @@ class Session:
             try:
                 self.world.tick()
                 self.tick += 1
-                self.sim_time += self.world.get_settings().fixed_delta_seconds
+                # Never `+= None`: a lost synchronous mode must degrade the run,
+                # not end it (see _tick_delta).
+                self.sim_time += self._tick_delta()
                 if self.state == "running":
                     self._step_agent()
                 if self._running_metrics and self.tick % max(1, int(self._target_hz / 10)) == 0:
@@ -805,6 +894,9 @@ class Session:
                 "throttle": round(ctrl.throttle, 3),
                 "brake": round(ctrl.brake, 3),
                 "steer": round(ctrl.steer, 3),
+                # A row timed at a fallback delta because the simulator dropped
+                # synchronous mode says so, instead of looking like a normal one.
+                "sync_lost": int(self.sync_lost),
             }
             self.metrics.append(row)
         except Exception:  # noqa: BLE001
@@ -838,6 +930,8 @@ class Session:
                 "max": round(max(speeds), 2) if speeds else 0.0,
             },
             "events": len(self.events),
+            "sync_lost": self.sync_lost,
+            "sync_lost_at_s": (round(self.sim_time, 2) if self.sync_lost else None),
             "wall_clock_s": round((self.stopped_at or time.time()) -
                                   (self.started_at or self.created_at), 2),
         }
@@ -888,6 +982,12 @@ class Session:
         }
 
     def status(self) -> dict:
+        # Only a preview/running session with a live synchronous mode has a
+        # fixed delta to report; anything else (loading, stopped, lost) has none,
+        # so the panel's sync chip has something true to print.
+        delta = None
+        if not self.sync_lost and self.state in ("preview", "running"):
+            delta = self._fixed_delta
         return {
             "id": self.id,
             "state": self.state,
@@ -898,6 +998,14 @@ class Session:
             "traffic": len(self.traffic),
             "walkers": len(self.walkers),
             "preview_degraded": self.preview_degraded,
+            # The clock the session is *really* running at, so the panel can show
+            # a live sync chip and stop showing one once the simulator has
+            # dropped synchronous mode.
+            "sync_mode": bool(delta is not None and delta > 0.0),
+            "fixed_delta": round(delta, 5) if delta else None,
+            "sync_lost": self.sync_lost,
+            "sync_lost_detail": self.sync_lost_detail,
+            "sync_reasserts": self.sync_reasserts,
             "ego": self._ego_pose(),
             "cameras": {
                 "preview": self.preview_camera,

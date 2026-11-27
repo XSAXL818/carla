@@ -1,0 +1,4 @@
+=== editor log lines during/after the 70 s backend suspend (full log had 1423 lines, CARLA content noise only) ===
+LogCarla: Error: Actor Name: Actor_29 Actor Labe: PB_HotelBase_02 has no SM assigned to the ISM
+LogCarla: Error: Actor Name: Actor_30 Actor Labe: PB_Hotel_02 has no SM assigned to the ISM
+LogCarla: Warning: No tick cue for 60 s in synchronous mode, but a client is still connected to RPC port 2000: waiting for it (synchronous mode lets a live client set the pace, so the world is paused, not wedged). carla.SyncCueTimeout=60, set it to 0 to wait forever.

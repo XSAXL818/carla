@@ -1,0 +1,8 @@
+t=  0.1 state=preview sync_mode=False sync_lost=True delta= reasserts=27 events=19
+captured 'CarlaUnreal （64-位 Development PCD3D_SM6） ' 1600x900 PrintWindow=True -> C:\GameProject\CarlaUE5\carla\Unreal\CarlaUnreal\acceptance\evidence-13\05-sync-lost-1-t0.1.png
+t=  0.1 CAPTURED sync_lost -> acceptance\evidence-13\05-sync-lost-1-t0.1.png
+captured 'CarlaUnreal （64-位 Development PCD3D_SM6） ' 1600x900 PrintWindow=True -> C:\GameProject\CarlaUE5\carla\Unreal\CarlaUnreal\acceptance\evidence-13\05-sync-lost-2-t0.6.png
+t=  0.6 CAPTURED sync_lost -> acceptance\evidence-13\05-sync-lost-2-t0.6.png
+captured 'CarlaUnreal （64-位 Development PCD3D_SM6） ' 1600x900 PrintWindow=True -> C:\GameProject\CarlaUE5\carla\Unreal\CarlaUnreal\acceptance\evidence-13\05-sync-lost-3-t0.9.png
+t=  0.9 CAPTURED sync_lost -> acceptance\evidence-13\05-sync-lost-3-t0.9.png
+watcher done, 3 polls, 3 captures

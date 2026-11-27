@@ -160,6 +160,11 @@ private:
 
   bool bSynchronousMode = false;
 
+  /// The RPC port this server listens on (from -carla-rpc-port, default 2000).
+  /// Read by the synchronous wait to ask the OS whether any client is still
+  /// connected there (see CarlaEngine.cpp QuerySyncClientPresence).
+  uint16 RPCPort = 0u;
+
   bool bMapChanged = false;
 
   FCarlaServer Server;

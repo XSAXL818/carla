@@ -1,0 +1,48 @@
+LogHttp: Warning: HTTP request timed out after 2.00 seconds URL=http://127.0.0.1:8765/sessions/current
+LogDerivedDataCache: G:/Epic/LocalDDC: Maintenance finished in +00:06:46.247 and deleted 0 files with total size 0 MiB and 0 empty folders. Scanned 227437 files in 185082 folders with total size 26519 MiB.
+LogCarla: Error: Synchronous mode lost: no tick cue for 60 s and no client is connected to the RPC port any more. Returning to asynchronous mode so the game thread keeps running: clients now read synchronous_mode=false and fixed_delta_seconds=None, so a client that samples or records at a fixed delta is no longer driven by this server. Raise carla.SyncCueTimeout (currently 60 s) or set it to 0 to wait forever.
+LogHttp: Warning: HTTP request timed out after 2.00 seconds URL=http://127.0.0.1:8765/sessions/current
+LogHttp: Warning: 000001B0F27D8500: request failed, libcurl error: 7 (Could not connect to server)
+LogHttp: Warning: 000001B0F27D8500: libcurl info message cache 0 (Connection 174 seems to be dead)
+LogHttp: Warning: 000001B0F27D8500: libcurl info message cache 1 (shutting down connection #174)
+LogHttp: Warning: 000001B0F27D8500: libcurl info message cache 2 (Connection 228 seems to be dead)
+LogHttp: Warning: 000001B0F27D8500: libcurl info message cache 3 (shutting down connection #228)
+LogHttp: Warning: 000001B0F27D8500: libcurl info message cache 4 (Hostname in DNS cache was stale, zapped)
+LogHttp: Warning: 000001B0F27D8500: libcurl info message cache 5 (  Trying 127.0.0.1:8765...)
+LogHttp: Warning: 000001B0F27D8500: libcurl info message cache 6 (connect to 127.0.0.1 port 8765 from 0.0.0.0 port 50995 failed: Connection refused)
+LogHttp: Warning: 000001B0F27D8500: libcurl info message cache 7 (Failed to connect to 127.0.0.1 port 8765 after 2021 ms: Could not connect to server)
+LogHttp: Warning: 000001B0F27D8500: libcurl info message cache 8 (closing connection #229)
+LogHttp: Warning: 000001B0F27D8500 GET http://127.0.0.1:8765/health completed with reason 'ConnectionError' after 2.02s
+LogHttp: Warning: HTTP request timed out after 2.00 seconds URL=http://127.0.0.1:8765/sessions/current
+LogHttp: Warning: 000001B0F27D6900: request failed, libcurl error: 7 (Could not connect to server)
+LogHttp: Warning: 000001B0F27D6900: libcurl info message cache 0 (Hostname 127.0.0.1 was found in DNS cache)
+LogHttp: Warning: 000001B0F27D6900: libcurl info message cache 1 (  Trying 127.0.0.1:8765...)
+LogHttp: Warning: 000001B0F27D6900: libcurl info message cache 2 (connect to 127.0.0.1 port 8765 from 0.0.0.0 port 50997 failed: Connection refused)
+LogHttp: Warning: 000001B0F27D6900: libcurl info message cache 3 (Failed to connect to 127.0.0.1 port 8765 after 2034 ms: Could not connect to server)
+LogHttp: Warning: 000001B0F27D6900: libcurl info message cache 4 (closing connection #231)
+LogHttp: Warning: 000001B0F27D6900 GET http://127.0.0.1:8765/health completed with reason 'ConnectionError' after 2.03s
+LogHttp: Warning: 000001B0F27D6200: request failed, libcurl error: 7 (Could not connect to server)
+LogHttp: Warning: 000001B0F27D6200: libcurl info message cache 0 (Hostname 127.0.0.1 was found in DNS cache)
+LogHttp: Warning: 000001B0F27D6200: libcurl info message cache 1 (  Trying 127.0.0.1:8765...)
+LogHttp: Warning: 000001B0F27D6200: libcurl info message cache 2 (connect to 127.0.0.1 port 8765 from 0.0.0.0 port 51000 failed: Connection refused)
+LogHttp: Warning: 000001B0F27D6200: libcurl info message cache 3 (Failed to connect to 127.0.0.1 port 8765 after 2034 ms: Could not connect to server)
+LogHttp: Warning: 000001B0F27D6200: libcurl info message cache 4 (closing connection #233)
+LogHttp: Warning: 000001B0F27D6200 GET http://127.0.0.1:8765/health completed with reason 'ConnectionError' after 2.04s
+LogHttp: Warning: HTTP request timed out after 2.00 seconds URL=http://127.0.0.1:8765/sessions/current
+LogHttp: Warning: 000001B0F27D6900: request failed, libcurl error: 7 (Could not connect to server)
+LogHttp: Warning: 000001B0F27D6900: libcurl info message cache 0 (Hostname 127.0.0.1 was found in DNS cache)
+LogHttp: Warning: 000001B0F27D6900: libcurl info message cache 1 (  Trying 127.0.0.1:8765...)
+LogHttp: Warning: 000001B0F27D6900: libcurl info message cache 2 (connect to 127.0.0.1 port 8765 from 0.0.0.0 port 51003 failed: Connection refused)
+LogHttp: Warning: 000001B0F27D6900: libcurl info message cache 3 (Failed to connect to 127.0.0.1 port 8765 after 2038 ms: Could not connect to server)
+LogHttp: Warning: 000001B0F27D6900: libcurl info message cache 4 (closing connection #235)
+LogHttp: Warning: 000001B0F27D6900 GET http://127.0.0.1:8765/health completed with reason 'ConnectionError' after 2.04s
+LogHttp: Warning: HTTP request timed out after 2.00 seconds URL=http://127.0.0.1:8765/sessions/current
+LogHttp: Warning: HTTP request timed out after 2.00 seconds URL=http://127.0.0.1:8765/sessions/current
+LogHttp: Warning: 000001B0F27D7E00: request failed, libcurl error: 7 (Could not connect to server)
+LogHttp: Warning: 000001B0F27D7E00: libcurl info message cache 0 (Hostname 127.0.0.1 was found in DNS cache)
+LogHttp: Warning: 000001B0F27D7E00: libcurl info message cache 1 (  Trying 127.0.0.1:8765...)
+LogHttp: Warning: 000001B0F27D7E00: libcurl info message cache 2 (connect to 127.0.0.1 port 8765 from 0.0.0.0 port 51006 failed: Connection refused)
+LogHttp: Warning: 000001B0F27D7E00: libcurl info message cache 3 (Failed to connect to 127.0.0.1 port 8765 after 2047 ms: Could not connect to server)
+LogHttp: Warning: 000001B0F27D7E00: libcurl info message cache 4 (closing connection #238)
+LogHttp: Warning: 000001B0F27D7E00 GET http://127.0.0.1:8765/health completed with reason 'ConnectionError' after 2.05s
+

@@ -376,7 +376,13 @@ TSharedRef<SWidget> STestPlatformUI::MakeTopBar()
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin(0.f, 0.f, 12.f, 0.f))
 			[
 				SNew(SBorder).BorderImage(&Brush(ColCard)).Padding(FMargin(8.f, 4.f))
-				[Text(TEXT("同步模式 · 20 Hz"), 10, false, ColMuted)]
+				[
+					// Painted by UpdateChrome from the backend's own report of the
+					// clock (sync_mode / fixed_delta / sync_lost). It used to be a
+					// constant "20 Hz", which outlived the session it described.
+					SAssignNew(SyncChipText, STextBlock).Text(FText::FromString(TEXT("同步模式 · —")))
+					.Font(F(10)).ColorAndOpacity(FSlateColor(ColDim))
+				]
 			]
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin(0.f, 0.f, 8.f, 0.f))
 			[
@@ -1701,6 +1707,12 @@ void STestPlatformUI::RequestBackendStart()
 
 void STestPlatformUI::UpdateChrome()
 {
+	// Is the backend process answering right now? Everything the top bar says
+	// about the session and its clock is a fact *it* reported, so when it stops
+	// answering those chips must go neutral instead of repeating the last answer
+	// forever (a dead backend used to leave "会话 · 预览中 / 同步模式 · 20 Hz" on
+	// screen while the server chip already said 未知).
+	const bool bBackendUp = Api.IsValid() && Api->HasBackendAnswer() && Api->IsBackendResponding();
 	if (StatusText.IsValid())
 	{
 		StatusText->SetText(FText::FromString(StatusDetail));
@@ -1708,9 +1720,44 @@ void STestPlatformUI::UpdateChrome()
 	}
 	if (SessionChipText.IsValid())
 	{
-		SessionChipText->SetText(FText::FromString(FString::Printf(
-			TEXT("会话 · %s"), *StateText(Session.State))));
-		SessionChipText->SetColorAndOpacity(FSlateColor(StateColor()));
+		// 未知 is the only honest word while nothing answers: the last state the
+		// backend reported is no longer current, and claiming it is exactly the
+		// stale chip the review flagged.
+		SessionChipText->SetText(FText::FromString(bBackendUp
+			? FString::Printf(TEXT("会话 · %s"), *StateText(Session.State))
+			: FString(TEXT("会话 · 未知"))));
+		SessionChipText->SetColorAndOpacity(FSlateColor(bBackendUp ? StateColor() : ColDim));
+	}
+	if (SyncChipText.IsValid())
+	{
+		// The chip follows the backend's report of the clock it is really
+		// running: 20 Hz (or whatever fixed delta) while synchronous, 已失去 once
+		// the simulator dropped it, — once there is nothing true to print.
+		FString SyncText = TEXT("同步模式 · —");
+		FLinearColor SyncColor = ColDim;
+		FString SyncTip = TEXT("后端没有报告同步状态");
+		if (!bBackendUp)
+		{
+			SyncTip = TEXT("后端进程没有应答，同步状态未知");
+		}
+		else if (Session.bSyncLost)
+		{
+			SyncText = TEXT("同步模式 · 已失去");
+			SyncColor = ColWarn;
+			SyncTip = Session.SyncLostDetail.IsEmpty()
+				? TEXT("模拟器已退出同步模式，仿真仍在运行（按最后已知步长计时）")
+				: Session.SyncLostDetail;
+		}
+		else if (Session.IsActive() && Session.bSyncMode && Session.FixedDelta > 0.f)
+		{
+			const int32 Hz = FMath::Max(1, FMath::RoundToInt(1.f / Session.FixedDelta));
+			SyncText = FString::Printf(TEXT("同步模式 · %d Hz"), Hz);
+			SyncColor = ColMuted;
+			SyncTip = FString::Printf(TEXT("固定步长 %.4f s（由后端报告）"), Session.FixedDelta);
+		}
+		SyncChipText->SetText(FText::FromString(SyncText));
+		SyncChipText->SetColorAndOpacity(FSlateColor(SyncColor));
+		SyncChipText->SetToolTipText(FText::FromString(SyncTip));
 	}
 	if (ServerChipText.IsValid())
 	{
@@ -1958,12 +2005,14 @@ EActiveTimerReturnType STestPlatformUI::TickRefresh(double Time, float DeltaTime
 	const bool bEndpointKnown = Api->HasCarlaEndpoint();
 	const int32 Port = bEndpointKnown ? Api->CarlaPort() : 0;
 	if (bReady != bLastBackendReady ||
+		bReachable != bLastBackendReachable ||
 		Api->IsCarlaConnected() != bLastCarlaConnected ||
 		Api->HasCarlaState() != bLastCarlaKnown ||
 		bEndpointKnown != bLastCarlaEndpointKnown ||
 		Port != LastCarlaPort)
 	{
 		bLastBackendReady = bReady;
+		bLastBackendReachable = bReachable;
 		bLastCarlaConnected = Api->IsCarlaConnected();
 		bLastCarlaKnown = Api->HasCarlaState();
 		bLastCarlaEndpointKnown = bEndpointKnown;

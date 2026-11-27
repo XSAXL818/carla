@@ -56,6 +56,19 @@
 #include "Engine/GameViewportClient.h"
 #include <util/ue-header-guard-end.h>
 
+#if PLATFORM_WINDOWS
+// GetExtendedTcpTable: is a client still connected to the RPC port? (see
+// QuerySyncClientPresence below). IPHlpApi is included the way Core does it,
+// under the same platform-type guards; the explicit #pragma keeps the plugin's
+// Build.cs untouched.
+THIRD_PARTY_INCLUDES_START
+#include "Windows/AllowWindowsPlatformTypes.h"
+#include <IPHlpApi.h>
+#include "Windows/HideWindowsPlatformTypes.h"
+THIRD_PARTY_INCLUDES_END
+#pragma comment(lib, "iphlpapi.lib")
+#endif // PLATFORM_WINDOWS
+
 #include <cstdlib>
 #include <cstring>
 #include <optional>
@@ -81,6 +94,86 @@ static TAutoConsoleVariable<int32> CVarCarlaMultiGpuVerifyFrames(
     TEXT("does not parse completely with this build (1 = on, 0 = off)."),
     ECVF_Default);
 #endif // !UE_BUILD_SHIPPING
+
+/// Synchronous mode: how long to wait for the next tick cue before giving up on
+/// the client and returning to asynchronous mode. 0 waits forever, which is the
+/// upstream CARLA contract.
+///
+/// The timeout is a *backstop*, not the arbitration: it only fires once the RPC
+/// port has no client connection left (see QuerySyncClientPresence). A client
+/// that is merely slow — a heavy agent step, a debugger pause, a suspended or
+/// descheduled process — keeps its rpclib session ESTABLISHED and is waited
+/// for, however long its gap, because that is what synchronous mode *is*.
+static TAutoConsoleVariable<float> CVarCarlaSyncCueTimeout(
+    TEXT("carla.SyncCueTimeout"),
+    60.0f,
+    TEXT("Synchronous mode: seconds without a tick cue before the simulator returns to asynchronous mode ")
+    TEXT("(0 = wait forever, the upstream CARLA behaviour; default 60). ")
+    TEXT("Firing also requires that no client is connected to the RPC port, so a slow but connected ")
+    TEXT("client is never ejected. Firing clears synchronous_mode and fixed_delta_seconds under the ")
+    TEXT("clients and logs an Error naming that consequence."),
+    ECVF_Default);
+
+namespace
+{
+
+/// Whether a client is still connected to this server's RPC port.
+///
+/// carla::rpc::Server (LibCarla/source/carla/rpc/Server.h:40-78) wraps rpclib's
+/// server and exposes neither its session list nor a client count, so "is
+/// anybody connected" is read from the OS instead: a slow client keeps its TCP
+/// connection ESTABLISHED for as long as it is alive, and the connection is
+/// gone once it is not. That is the cheap signal that separates "slow" from
+/// "gone"; an "RPC arrived recently" test cannot, because a paused client sends
+/// nothing either.
+enum class ESyncClientPresence : uint8
+{
+  Unknown, ///< this platform (or the OS call) cannot tell: the timeout decides
+  Present, ///< a client is connected: waiting for its cue is legitimate
+  Absent   ///< nothing is connected to the RPC port
+};
+
+ESyncClientPresence QuerySyncClientPresence(uint16 RPCPort)
+{
+#if PLATFORM_WINDOWS
+  // ulAf = AF_INET (2). TCP_TABLE_OWNER_PID_CONNECTIONS lists every IPv4 TCP
+  // endpoint with its state.
+  DWORD Size = 0u;
+  if (::GetExtendedTcpTable(nullptr, &Size, 0, 2u,
+        TCP_TABLE_OWNER_PID_CONNECTIONS, 0) != ERROR_INSUFFICIENT_BUFFER || Size == 0u)
+  {
+    return ESyncClientPresence::Unknown;
+  }
+  TArray<uint8> Rows;
+  Rows.SetNumUninitialized(static_cast<int32>(Size));
+  if (::GetExtendedTcpTable(Rows.GetData(), &Size, 0, 2u,
+        TCP_TABLE_OWNER_PID_CONNECTIONS, 0) != NO_ERROR)
+  {
+    return ESyncClientPresence::Unknown;
+  }
+  const auto *Table = reinterpret_cast<const MIB_TCPTABLE_OWNER_PID *>(Rows.GetData());
+  for (DWORD Index = 0u; Index < Table->dwNumEntries; ++Index)
+  {
+    const MIB_TCPROW_OWNER_PID &Row = Table->table[Index];
+    // dwLocalPort carries the port number in network byte order.
+    const uint16 LocalPort = static_cast<uint16>(
+        ((Row.dwLocalPort & 0x00FFu) << 8u) | ((Row.dwLocalPort & 0xFF00u) >> 8u));
+    if (LocalPort == RPCPort && Row.dwState == 5u /* MIB_TCP_STATE_ESTAB */)
+    {
+      return ESyncClientPresence::Present;
+    }
+  }
+  return ESyncClientPresence::Absent;
+#else
+  (void) RPCPort;
+  // No cheap, portable "is anybody connected" query is available here, so the
+  // timeout alone decides (documented trade-off: a merely-slow client can then
+  // hit it). Set carla.SyncCueTimeout=0 to wait forever.
+  return ESyncClientPresence::Unknown;
+#endif // PLATFORM_WINDOWS
+}
+
+} // namespace
 
 static TOptional<double> FCarlaEngine_GetFixedDeltaSeconds()
 {
@@ -227,6 +320,10 @@ void FCarlaEngine::NotifyInitGame(const UCarlaSettings &Settings)
     const auto SecondaryPort = Settings.SecondaryPort;
     const auto PrimaryIP     = Settings.PrimaryIP;
     const auto PrimaryPort   = Settings.PrimaryPort;
+
+    // Kept for the synchronous wait: it asks the OS whether a client is still
+    // connected to this port before it gives up on a tick cue.
+    RPCPort = Settings.RPCPort;
 
     // rpclib's asio acceptor throws (std::system_error, "address already
     // in use") when the RPC port is taken -- typically another CARLA
@@ -943,30 +1040,73 @@ void FCarlaEngine::OnPreTick(UWorld *World, ELevelTick TickType, float DeltaSeco
   }
 
   // process RPC commands
+  //
+  // A synchronous client that dies (the test platform backend window is closed,
+  // or the process is killed) can never send the next tick cue, and waiting for
+  // it freezes the game thread, and with it the panel that has to report the
+  // disconnection. So a wait that outlives carla.SyncCueTimeout gives up on it —
+  // but only once no client is connected to the RPC port any more, because a
+  // client that is merely slow must not be silently ejected from synchronous
+  // mode (its session then advances behind its back at the wrong delta).
   const double SyncWaitStarted = FPlatformTime::Seconds();
+  ESyncClientPresence ClientPresence = ESyncClientPresence::Unknown;
+  double PresenceCheckedAt = 0.0;
+  bool bReportedWaitingForLiveClient = false;
   do
   {
     Server.RunSome(1u);
-    // A synchronous client that dies (the test platform backend window is
-    // closed, or the process is killed) can never send the next tick cue.
-    // Waiting forever freezes the game thread, and with it the panel that has
-    // to report the disconnection. A live client ticks every frame, so a long
-    // gap means nobody is driving the clock: fall back to asynchronous mode.
-    static constexpr double SyncCueTimeoutSeconds = 15.0;
-    if (bSynchronousMode &&
-        (FPlatformTime::Seconds() - SyncWaitStarted) > SyncCueTimeoutSeconds)
+    const float SyncCueTimeoutSeconds = CVarCarlaSyncCueTimeout.GetValueOnGameThread();
+    if (bSynchronousMode && SyncCueTimeoutSeconds > 0.0f)
     {
-      UE_LOG(LogCarla, Warning,
-          TEXT("No tick cue for %.0f s in synchronous mode (client gone?); "
-               "switching back to asynchronous so the game thread keeps running"),
-          SyncCueTimeoutSeconds);
-      CurrentSettings.bSynchronousMode = false;
-      CurrentSettings.FixedDeltaSeconds.Reset();
-      bSynchronousMode = false;
-      Server.GetStreamingServer().SetSynchronousMode(false);
-      if (CurrentEpisode != nullptr)
+      const double Now = FPlatformTime::Seconds();
+      const double WaitedSeconds = Now - SyncWaitStarted;
+      if (WaitedSeconds > SyncCueTimeoutSeconds)
       {
-        CurrentEpisode->ApplySettings(CurrentSettings);
+        // The OS query is cheap but not free: once a second is far more than
+        // enough to notice a connection that went away.
+        if (Now - PresenceCheckedAt >= 1.0)
+        {
+          PresenceCheckedAt = Now;
+          ClientPresence = QuerySyncClientPresence(RPCPort);
+        }
+        if (ClientPresence == ESyncClientPresence::Present)
+        {
+          if (!bReportedWaitingForLiveClient)
+          {
+            bReportedWaitingForLiveClient = true;
+            UE_LOG(LogCarla, Warning,
+                TEXT("No tick cue for %.0f s in synchronous mode, but a client is still connected "
+                     "to RPC port %u: waiting for it (synchronous mode lets a live client set the pace, "
+                     "so the world is paused, not wedged). carla.SyncCueTimeout=%.0f, set it to 0 to "
+                     "wait forever."),
+                WaitedSeconds, static_cast<uint32>(RPCPort), SyncCueTimeoutSeconds);
+          }
+        }
+        else
+        {
+          // Absent, or Unknown because this platform cannot tell: the client is
+          // gone as far as this process can establish. Say exactly what it costs.
+          UE_LOG(LogCarla, Error,
+              TEXT("Synchronous mode lost: no tick cue for %.0f s and %s. Returning to asynchronous "
+                   "mode so the game thread keeps running: clients now read synchronous_mode=false "
+                   "and fixed_delta_seconds=None, so a client that samples or records at a fixed "
+                   "delta is no longer driven by this server. Raise carla.SyncCueTimeout (currently "
+                   "%.0f s) or set it to 0 to wait forever."),
+              WaitedSeconds,
+              (ClientPresence == ESyncClientPresence::Absent)
+                  ? TEXT("no client is connected to the RPC port any more")
+                  : TEXT("this platform cannot tell whether a client is connected"),
+              SyncCueTimeoutSeconds);
+          CurrentSettings.bSynchronousMode = false;
+          CurrentSettings.FixedDeltaSeconds.Reset();
+          bSynchronousMode = false;
+          Server.GetStreamingServer().SetSynchronousMode(false);
+          if (CurrentEpisode != nullptr)
+          {
+            CurrentEpisode->ApplySettings(CurrentSettings);
+          }
+          break;
+        }
       }
     }
   }
