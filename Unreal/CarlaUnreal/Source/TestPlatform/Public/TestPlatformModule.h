@@ -42,9 +42,20 @@ private:
 	bool TickSessionPoll(float DeltaTime);
 
 	void EnsureUI(UGameViewportClient* ViewportClient);
+	/** Takes the panel off the game viewport and hands the input back to the map. */
+	void RemovePanelFromViewport();
 	void EnsureCamera(UWorld* World, APlayerController* PlayerController);
 	void ApplyCameraPose();
 	void ApplyInputMode(bool bUICaptured);
+
+	/**
+	 * Map gate. The panel only exists in an entry-map run: the whitelist comes
+	 * from UTestPlatformSettings (DefaultGame.ini), -TestPlatformForceUI forces
+	 * it on everywhere, and an explicit TestPlatform.Panel is a manual override.
+	 */
+	bool IsEntryMap(const FString& MapId) const;
+	/** Map package name of a world, with any PIE prefix removed. */
+	static FString WorldMapId(const UWorld* World);
 
 	void TryStartBackend();
 
@@ -86,6 +97,25 @@ private:
 	bool bPollInFlight = false;
 	bool bPanelAdded = false;
 	bool bUICaptured = false;
+
+	// ---- map gate (see IsEntryMap / UTestPlatformSettings) ----
+	/** Whitelist read once at startup from UTestPlatformSettings. */
+	TArray<FString> EntryMaps;
+	/** The map the gate last ruled on, for one log line per map instead of per frame. */
+	FString LastGatedMapId;
+	/** Last gate verdict; starts true so the first frame logs its decision. */
+	bool bPanelAllowed = true;
+	/** -TestPlatformForceUI on the command line: the panel ignores the gate. */
+	bool bForceUI = false;
+	/**
+	 * This run started in an entry map. Latched because the backend's preview
+	 * load (client.load_world) replaces the entry level with the selected town
+	 * while the config screen must stay up; a per-current-map test would hide
+	 * the panel exactly when the city appears.
+	 */
+	bool bEntryMapArmed = false;
+	/** TestPlatform.Panel 1: an explicit request outranks the gate until Panel 0. */
+	bool bPanelManuallyShown = false;
 	double LastBackendAttempt = -100.0;
 	double RuntimeSeconds = 0.0;
 	double LastInputAssert = 0.0;

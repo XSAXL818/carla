@@ -21,7 +21,10 @@ public class TestPlatform : ModuleRules
 			"HTTP",
 			"Json",
 			"JsonUtilities",
-			"Projects"
+			"Projects",
+			// UTestPlatformSettings: the entry-map whitelist in Project Settings
+			// (DefaultGame.ini). Runtime module, safe for packaged builds.
+			"DeveloperSettings"
 		});
 
 		if (Target.bBuildEditor)

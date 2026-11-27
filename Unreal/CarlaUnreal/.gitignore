@@ -22,6 +22,10 @@ Plugins/Carla/Saved
 !/Content/Developers/
 /Content/Developers/*
 !/Content/Developers/LoongTory/
+# The test platform's own UE assets (its entry level) are project-owned and
+# tracked; everything else directly under Content stays ignored.
+!/Content/TestPlatform/
+!/Content/TestPlatform/**
 Config/CarlaSettings.ini
 Config/DefaultEditor.ini
 Config/CarSimConfig.ini

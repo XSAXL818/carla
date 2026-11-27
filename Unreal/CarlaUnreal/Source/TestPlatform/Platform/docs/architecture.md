@@ -282,9 +282,23 @@ UE 侧 C++ 负责：把 Slate 面板挂到 game viewport、按后端状态驱动
 `wt.exe` 找不到、或 `FPlatformProcess::CreateProc` 失败时，退回到普通可见控制台窗口
 `cmd /c start "CARLA TestPlatform Backend" "<python>" run.py`，并用 Warning 日志说明走了哪条路径（Windows Terminal / 普通控制台）以及启动进程的 pid、工作目录、端点 —— 绝不静默退回隐藏模式。`wt.exe` 先按 `%LOCALAPPDATA%\Microsoft\WindowsApps\wt.exe`（Store 按用户安装的执行别名）找，再退回 PATH 上的 `wt.exe`；命令行开关 `-TestPlatformBackendLauncher=<path>` 覆盖这个查找（指到不存在的文件即可验证兜底路径）。日志里的 pid 是启动器（wt.exe / cmd.exe）的 pid，它很快就退出，真正的 python 在它下面：`python.exe -> cmd.exe -> WindowsTerminal.exe`。
 
+### 9.1 入口地图与面板开关（2026-11-28）
+
+配置界面不再是"打开任意地图就有"的覆盖层，而是**入口地图的前端**。
+
+- **平台资产的家**：`Content/TestPlatform/`。入口地图是 `Content/TestPlatform/Maps/L_TestPlatformEntry.umap`，一个**空壳**：只有 1 个 `PlayerStart`，没有城市几何。配置界面中央的 3D 城市不是这张图的一部分 —— 后端 `POST /sessions/preview_map` 用 `client.load_world` 把选中的城镇加载进**同一个进程**，面板是盖在那张城镇上的。
+- **默认地图**：`Config/DefaultEngine.ini` 的 `GameDefaultMap` 与 `EditorStartupMap` 都是 `/Game/TestPlatform/Maps/L_TestPlatformEntry.L_TestPlatformEntry`，所以每次启动都落在配置界面。`ServerDefaultMap` 仍是 Town10HD：它只管 `-server`，与配置界面无关。`GlobalDefaultGameMode`（`CarlaGameMode`）不变 —— 空壳地图同样要由它起 CARLA 的 world/RPC 服务，已用真实 `-game` 运行验证（2000 端口监听、`carla.Client` 能连、`preview_map` 能 load_world）。
+- **白名单**：`UTestPlatformSettings::EntryMaps`，落在 `Config/DefaultGame.ini` 的 `[/Script/TestPlatform.TestPlatformSettings]`（编辑器里是 Project Settings > Game > Test Platform）。条目可以写完整包路径（`/Game/TestPlatform/Maps/L_TestPlatformEntry`）或短地图名（`L_TestPlatformEntry`），PIE 前缀忽略；列表为空时回退到同一个入口地图。别的图（Town05 等）不再显示面板，浏览地图是干净的。白名单在模块启动时读一次，改动要重启进程。
+- **闸门按"本次运行从哪张图启动"闩锁，不是"当前地图"**：`client.load_world` 会把入口地图换成预览城镇，而配置界面必须继续存在；只看当前地图会在城市出现的那一刻把面板藏掉。所以进程第一次看到白名单里的地图就记下"这是一次配置界面运行"，之后一直允许；从别的图启动的进程永远不允许。日志每次地图变化打一行 `map <包路径>: config panel enabled|disabled (<原因>)`，据此核对。
+- **两种显式覆盖**：命令行 `-TestPlatformForceUI` 无视白名单强制显示（自动化用，等价于"永远允许"）；控制台 `TestPlatform.Panel 1` 是手动覆盖（`Panel 0` 把控制权交回闸门）。自动路径永远不会在非入口地图里显示面板。
+- 默认启动仍然没有地图参数：`run-editor-lowquality.ps1` 不带 `-Map` 时用项目默认图（入口地图），带 `-Map /Game/Carla/Maps/Town05_Opt` 时打开指定图且不出面板。
+
 ## 10. 目录结构
 
 ```
+Content/TestPlatform/          测试平台自己的 UE 资产（不放 CARLA 的内容）
+  Maps/L_TestPlatformEntry.umap  入口地图：空壳 + 1 个 PlayerStart，配置界面的宿主
+
 Source/TestPlatform/
   Public/           模块、API 客户端、Slate 面板、相机 rig 的头文件
   Private/          模块实现（TestPlatformModule / TestPlatformApi / STestPlatformUI / PreviewCameraRig）

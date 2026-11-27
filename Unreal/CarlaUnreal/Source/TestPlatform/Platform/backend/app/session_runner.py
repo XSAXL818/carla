@@ -148,7 +148,28 @@ class Session:
                 raise SessionError(
                     f"连接 CARLA 失败（{paths.CARLA_HOST}:{paths.CARLA_PORT}）："
                     f"{exc or '请先启动 CarlaUnreal'}") from exc
-        self.map = self.world.get_map()
+        try:
+            self.map = self.world.get_map()
+        except RuntimeError:
+            # The world can legitimately have no OpenDrive: the config-screen
+            # entry level is an empty shell, and carla's Map is built from the
+            # xodr ("failed to generate map"). preview() loads the town before
+            # anything needs the map, and _compute_preview_camera already
+            # handles None.
+            self.map = None
+
+    def _current_world_name(self) -> str:
+        """Name of the map the simulator is showing, "" when it has no OpenDrive.
+
+        Asking for ``world.get_map().name`` on the empty entry level raises
+        ``RuntimeError("failed to generate map")``; that is the normal starting
+        point of the config screen, not an error. An empty name never matches
+        the requested town, so preview() goes on and loads it.
+        """
+        try:
+            return self.world.get_map().name
+        except RuntimeError:
+            return ""
 
     def _set_settings(self, hz: float):
         carla = _carla()
@@ -530,8 +551,9 @@ class Session:
             self.route_waypoints = self._resolve_route()
             self._connect()
             carla = _carla()
-            raw_name = self.client.get_world().get_map().name
-            # e.g. "Carla/Maps/Town10HD_Opt" -> "town10hd"
+            raw_name = self._current_world_name()
+            # e.g. "Carla/Maps/Town10HD_Opt" -> "town10hd"; "" (no OpenDrive in
+            # the empty entry level) never matches, so the town is loaded.
             current = raw_name.split("/")[-1].lower().replace("_opt", "")
             if current != self.map_name.lower():
                 world_name = self._resolve_world_name()

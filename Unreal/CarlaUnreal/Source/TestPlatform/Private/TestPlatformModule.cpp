@@ -2,6 +2,7 @@
 
 #include "STestPlatformUI.h"
 #include "TestPlatformApi.h"
+#include "TestPlatformSettings.h"
 #include "Camera/CameraActor.h"
 #include "Camera/CameraComponent.h"
 #include "Containers/Ticker.h"
@@ -18,6 +19,7 @@
 #include "Misc/FileHelper.h"
 #include "Misc/Parse.h"
 #include "Misc/Paths.h"
+#include "UObject/Package.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogTestPlatform, Log, All);
 
@@ -103,12 +105,59 @@ namespace
 	{
 		return Host == TEXT("127.0.0.1") || Host == TEXT("::1") || Host.StartsWith(TEXT("127."));
 	}
+
+	/** World instance ids of a PIE world: UEDPIE_0_<map>, UEDPIE_12_<map>, ... */
+	FString StripPiePrefix(const FString& MapName)
+	{
+		FString Name = MapName;
+		if (Name.StartsWith(TEXT("UEDPIE_"), ESearchCase::CaseSensitive))
+		{
+			const int32 PrefixEnd = Name.Find(
+				TEXT("_"), ESearchCase::CaseSensitive, ESearchDir::FromStart, 7);
+			if (PrefixEnd != INDEX_NONE)
+			{
+				Name.RightChopInline(PrefixEnd + 1);
+			}
+		}
+		return Name;
+	}
+
+	/** The config-driven whitelist, with the shipped entry level as the fallback. */
+	TArray<FString> LoadEntryMaps()
+	{
+		TArray<FString> Maps;
+		if (const UTestPlatformSettings* Settings = GetDefault<UTestPlatformSettings>())
+		{
+			for (const FString& Map : Settings->EntryMaps)
+			{
+				const FString Trimmed = Map.TrimStartAndEnd();
+				if (!Trimmed.IsEmpty())
+				{
+					Maps.AddUnique(Trimmed);
+				}
+			}
+		}
+		if (Maps.Num() == 0)
+		{
+			Maps.Add(UTestPlatformSettings::DefaultEntryMap);
+		}
+		return Maps;
+	}
 }
 
 void FTestPlatformModule::StartupModule()
 {
 	UE_LOG(LogTestPlatform, Log, TEXT("CARLA test platform runtime module started"));
 	GModuleInstance = this;
+
+	// The panel belongs to the entry level, so the map gate is read here once:
+	// this is a launch-time decision, like the backend URL.
+	bForceUI = FParse::Param(FCommandLine::Get(), TEXT("TestPlatformForceUI"));
+	EntryMaps = LoadEntryMaps();
+	UE_LOG(LogTestPlatform, Log,
+		TEXT("panel gate: entry maps [%s]%s"),
+		*FString::Join(EntryMaps, TEXT(", ")),
+		bForceUI ? TEXT(", forced on by -TestPlatformForceUI") : TEXT(""));
 
 	RuntimeHandle = FTSTicker::GetCoreTicker().AddTicker(
 		FTickerDelegate::CreateRaw(this, &FTestPlatformModule::TickRuntime), 0.f);
@@ -226,8 +275,83 @@ void FTestPlatformModule::EnsureUI(UGameViewportClient* ViewportClient)
 	UE_LOG(LogTestPlatform, Log, TEXT("test platform UI added to the game viewport"));
 }
 
+void FTestPlatformModule::RemovePanelFromViewport()
+{
+	if (!UI.IsValid() || !bPanelAdded)
+	{
+		return;
+	}
+	UGameViewportClient* ViewportClient = nullptr;
+	if (CachedViewportClient.IsValid())
+	{
+		ViewportClient = CachedViewportClient.Get();
+	}
+	else if (GEngine != nullptr)
+	{
+		ViewportClient = GEngine->GameViewport;
+	}
+	if (ViewportClient != nullptr)
+	{
+		ViewportClient->RemoveViewportWidgetContent(UI.ToSharedRef());
+	}
+	bPanelAdded = false;
+	// The panel owned the cursor and GameAndUI input; give the map back so a
+	// browse is not left with a dead mouse pointer.
+	ApplyInputMode(false);
+	UE_LOG(LogTestPlatform, Log, TEXT("test platform UI removed from the game viewport"));
+}
+
+FString FTestPlatformModule::WorldMapId(const UWorld* World)
+{
+	if (World == nullptr)
+	{
+		return FString();
+	}
+	const UPackage* Package = World->GetOutermost();
+	return StripPiePrefix(Package != nullptr ? Package->GetName() : FString());
+}
+
+bool FTestPlatformModule::IsEntryMap(const FString& MapId) const
+{
+	if (MapId.IsEmpty())
+	{
+		return false;
+	}
+	FString ShortName = MapId;
+	int32 Slash = INDEX_NONE;
+	if (ShortName.FindLastChar(TEXT('/'), Slash))
+	{
+		ShortName.RightChopInline(Slash + 1);
+	}
+	for (const FString& Entry : EntryMaps)
+	{
+		const FString Candidate = Entry.TrimStartAndEnd();
+		if (Candidate.IsEmpty())
+		{
+			continue;
+		}
+		if (Candidate.Equals(MapId, ESearchCase::IgnoreCase)
+			|| Candidate.Equals(ShortName, ESearchCase::IgnoreCase))
+		{
+			return true;
+		}
+		// A path written without the /Game prefix still matches, as long as it
+		// ends on a folder boundary.
+		if (MapId.Len() > Candidate.Len() && MapId.EndsWith(Candidate, ESearchCase::IgnoreCase)
+			&& MapId[MapId.Len() - Candidate.Len() - 1] == TEXT('/'))
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
 void FTestPlatformModule::ShowPanel()
 {
+	// An explicit request (TestPlatform.Panel) outranks the map gate until
+	// TestPlatform.Panel 0: the manual equivalent of -TestPlatformForceUI. The
+	// automatic path never shows the panel outside an entry-map run.
+	bPanelManuallyShown = true;
 	if (UGameViewportClient* ViewportClient = (GEngine ? GEngine->GameViewport : nullptr))
 	{
 		EnsureUI(ViewportClient);
@@ -236,10 +360,14 @@ void FTestPlatformModule::ShowPanel()
 	{
 		UI->SetUIVisible(true);
 	}
+	UE_LOG(LogTestPlatform, Log,
+		TEXT("test platform UI shown by request on map %s (manual override of the entry-map gate)"),
+		*LastGatedMapId);
 }
 
 void FTestPlatformModule::HidePanel()
 {
+	bPanelManuallyShown = false;
 	if (UI.IsValid())
 	{
 		UI->SetUIVisible(false);
@@ -606,6 +734,37 @@ bool FTestPlatformModule::TickRuntime(float DeltaTime)
 	UWorld* World = ViewportClient->GetWorld();
 	if (World == nullptr || World->WorldType == EWorldType::Editor)
 	{
+		return true;
+	}
+
+	// The panel is the front end of an entry level, not an overlay on every map:
+	// browsing a town must stay clean. The verdict is latched for the run
+	// because the backend's preview load (client.load_world) replaces the entry
+	// level with the selected town while the config screen has to stay up --
+	// gating on the current map alone would hide the panel exactly when the
+	// city appears.
+	const FString MapId = WorldMapId(World);
+	const bool bOnEntryMap = IsEntryMap(MapId);
+	bEntryMapArmed = bEntryMapArmed || bOnEntryMap;
+	const bool bAllowed = bForceUI || bEntryMapArmed || bPanelManuallyShown;
+	if (bAllowed != bPanelAllowed || !MapId.Equals(LastGatedMapId))
+	{
+		UE_LOG(LogTestPlatform, Log, TEXT("map %s: config panel %s (%s)"),
+			*MapId, bAllowed ? TEXT("enabled") : TEXT("disabled"),
+			bForceUI ? TEXT("-TestPlatformForceUI")
+				: bOnEntryMap ? TEXT("entry map")
+				: bEntryMapArmed ? TEXT("this run started on an entry map")
+				: bPanelManuallyShown ? TEXT("TestPlatform.Panel")
+				: TEXT("not an entry map"));
+		bPanelAllowed = bAllowed;
+		LastGatedMapId = MapId;
+		GLog->Flush();
+	}
+	if (!bAllowed)
+	{
+		// Clean browse: no widget, no preview camera, no input capture and no
+		// screen-message suppression in a map that is not the entry level.
+		RemovePanelFromViewport();
 		return true;
 	}
 

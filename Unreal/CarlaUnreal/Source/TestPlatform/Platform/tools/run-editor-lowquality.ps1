@@ -5,8 +5,14 @@
 # this script claws back what can be clawed back: Lumen and virtual shadow maps
 # off, screen percentage down, 30 fps cap, backend and stale processes handled.
 #
-#   pwsh -File run-editor-lowquality.ps1              # 1280x720, 70%
+# With no -Map the run uses the project's GameDefaultMap, which is the
+# test-platform entry level (Content/TestPlatform/Maps/L_TestPlatformEntry), so
+# the config panel appears. Any other map runs without it: the panel is gated to
+# the entry maps listed in DefaultGame.ini.
+#
+#   pwsh -File run-editor-lowquality.ps1              # 1280x720, 70%, entry level
 #   pwsh -File run-editor-lowquality.ps1 -ResX 1600 -ResY 900 -Screen 50
+#   pwsh -File run-editor-lowquality.ps1 -Map /Game/Carla/Maps/Town05_Opt   # browse a town, no panel
 #   pwsh -File run-editor-lowquality.ps1 -Backend 127.0.0.1:8791   # non-default backend endpoint
 param(
     [int]$ResX = 1280,
@@ -14,7 +20,11 @@ param(
     [int]$Screen = 70,
     [switch]$HighQuality,
     [switch]$ShowFps,
-    [string]$Backend = 'http://127.0.0.1:8765'
+    [string]$Backend = 'http://127.0.0.1:8765',
+    # empty = the project default (the entry level); a package path or map name
+    # here overrides it, and the config panel stays away unless the map is
+    # whitelisted.
+    [string]$Map = ''
 )
 
 # Normalisation follows FTestPlatformApi::RootUrl(): trim, add http:// when the
@@ -113,11 +123,12 @@ if ($HighQuality) { $cvars = @("r.ScreenPercentage $Screen") }
 
 $arguments = @(
     $project, '-game', '-windowed', "-ResX=$ResX", "-ResY=$ResY", '-nosound', '-nologtimes',
-    "-TestPlatformBackend=$backendUrl",
+    "-TestPlatformBackend=$backendUrl"
+) + @($Map | Where-Object { $_ -ne '' }) + @(
     "-ExecCmds=$($cvars -join ',')"
 )
 
-Write-Host "launching CARLA (editor/game path) ${ResX}x${ResY} screen=$Screen" -ForegroundColor Cyan
+Write-Host "launching CARLA (editor/game path) ${ResX}x${ResY} screen=$Screen map=$(if ($Map -eq '') { 'project default (entry level)' } else { $Map })" -ForegroundColor Cyan
 $editor = Start-Process -FilePath $engine -ArgumentList $arguments -PassThru
 
 $logs = Join-Path (Split-Path $project) 'Saved\Logs'
