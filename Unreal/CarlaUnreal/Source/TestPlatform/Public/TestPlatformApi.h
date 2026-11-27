@@ -119,6 +119,18 @@ public:
 	void LoadCatalog();
 	void SelectMap(const FString& MapId);
 
+	/**
+	 * GET /health and read carla.connected. The catalog endpoints answer with
+	 * the simulator closed, so IsReady() only means "the backend answered" —
+	 * this is the one signal that says whether CARLA's RPC server is actually
+	 * up. Asynchronous; poll it rather than awaiting it.
+	 */
+	void LoadHealth();
+	/** What the last /health answer said about carla.connected. */
+	bool IsCarlaConnected() const { return bCarlaConnected; }
+	/** False until a /health answer has been parsed (backend down or starting). */
+	bool HasCarlaState() const { return bCarlaKnown; }
+
 	bool IsReady() const { return bReady; }
 	const TArray<FMapInfo>& Maps() const { return MapsCache; }
 	const TArray<FVehicleInfo>& Vehicles() const { return VehiclesCache; }
@@ -169,6 +181,8 @@ private:
 	TArray<FAlgoInfo> AlgoCache;
 	TMap<FString, TArray<FMapPreset>> PresetsByMap;
 	bool bReady = false;
+	bool bCarlaConnected = false;
+	bool bCarlaKnown = false;
 };
 
 

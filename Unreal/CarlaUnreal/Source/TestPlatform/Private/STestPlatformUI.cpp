@@ -118,6 +118,35 @@ namespace
 			.ColorAndOpacity(FSlateColor(Color));
 	}
 
+	/** Width of the right-hand column. The wrapping hints derive their wrap
+	 *  width from it, so resizing the column cannot silently re-clip them. */
+	constexpr float RightColumnWidth = 384.f;
+	/** SBorder padding inside that column, above the scroll box. */
+	constexpr float RightColumnPadding = 10.f;
+	/** One Card() nests two SBorder layers of the same padding. */
+	constexpr float CardPadding = 12.f;
+
+	/** Text() plus wrapping at a fixed width. Only the long hint paragraphs use
+	 *  this: Text() stays single-line, so enabling wrap here cannot reflow the
+	 *  rest of the panel. AutoWrapText additionally honours a narrower
+	 *  allotment, which keeps the text inside the column if the scroll box ever
+	 *  grows a scrollbar. */
+	TSharedRef<SWidget> WrappedText(const FString& Value, float WrapWidth, int32 Size = 11,
+		bool bBold = false, const FLinearColor& Color = ColText)
+	{
+		return SNew(STextBlock)
+			.Text(FText::FromString(Value))
+			.Font(F(Size, bBold))
+			.ColorAndOpacity(FSlateColor(Color))
+			.WrapTextAt(WrapWidth)
+			.AutoWrapText(true);
+	}
+
+	/** Content width of a section directly inside the right column. */
+	constexpr float RightColumnContentWidth = RightColumnWidth - 2.f * RightColumnPadding;
+	/** Content width inside one Card() of that column. */
+	constexpr float RightCardContentWidth = RightColumnContentWidth - 2.f * CardPadding;
+
 
 	TSharedRef<SWidget> Spacer(float Amount = 1.f)
 	{
@@ -162,7 +191,7 @@ void STestPlatformUI::Construct(const FArguments& InArgs)
 				+ SHorizontalBox::Slot()
 				.AutoWidth()
 				[
-					SNew(SBox).WidthOverride(384.f)[MakeRightColumn()]
+					SNew(SBox).WidthOverride(RightColumnWidth)[MakeRightColumn()]
 				]
 			]
 			+ SVerticalBox::Slot().AutoHeight()[MakeBottomBar()]
@@ -997,9 +1026,10 @@ void STestPlatformUI::RebuildAgent()
 
 	AgentBox->AddSlot().AutoHeight().Padding(FMargin(0.f, 8.f, 0.f, 0.f))
 	[
-		Text(LOCTEXT("AlgoNote",
+		WrappedText(LOCTEXT("AlgoNote",
 			"参数由算法自描述：/algorithms 返回字段 schema（类型 / 范围 / 单位 / 默认值）。"
-			"面板控件按内置算法固定，新增算法或参数需同步更新面板。").ToString(), 9, false, ColDim)
+			"面板控件按内置算法固定，新增算法或参数需同步更新面板。").ToString(),
+			RightColumnContentWidth, 9, false, ColDim)
 	];
 
 	// behaviour chips straight from the schema enum
@@ -1157,9 +1187,9 @@ void STestPlatformUI::RebuildSummary()
 			[KV(LOCTEXT("SumAgent", "算法").ToString(), Config.AlgoId)]
 			+ SVerticalBox::Slot().AutoHeight().Padding(FMargin(0.f, 8.f, 0.f, 0.f))
 			[
-				Text(LOCTEXT("SumHint",
+				WrappedText(LOCTEXT("SumHint",
 					"路线按 xodr 生成（road_id / lane_id / s），坐标用到时才解析：首尾点解析失败会报错，中间点解析不到会跳过。").ToString(),
-					9, false, ColWarn)
+					RightCardContentWidth, 9, false, ColWarn)
 			])
 	];
 }
@@ -1479,9 +1509,15 @@ void STestPlatformUI::UpdateChrome()
 	}
 	if (ServerChipText.IsValid())
 	{
-		ServerChipText->SetText(FText::FromString(IsBackendReady()
-			? TEXT("服务器 127.0.0.1 : 2000 · 已连接")
-			: TEXT("服务器 127.0.0.1 : 2000 · 未连接")));
+		// The address in this chip is CARLA's RPC endpoint, so the state after
+		// the dot has to come from the CARLA probe (/health -> carla.connected).
+		// "the backend answered" is not the same thing: the backend serves the
+		// catalog with the simulator closed and still reports connected=false.
+		const FString State = (Api.IsValid() && Api->HasCarlaState())
+			? (Api->IsCarlaConnected() ? TEXT("已连接") : TEXT("未连接"))
+			: TEXT("未知"); // /health not answered yet
+		ServerChipText->SetText(FText::FromString(
+			FString::Printf(TEXT("服务器 127.0.0.1 : 2000 · %s"), *State)));
 	}
 	if (MapChipText.IsValid())
 	{
@@ -1627,9 +1663,21 @@ EActiveTimerReturnType STestPlatformUI::TickRefresh(double Time, float DeltaTime
 		}
 		SetStatus(TEXT("地图加载超时（多发生在 Town10HD 这类高清图），请重试或换一张"), true);
 	}
-	if (bReady != bLastBackendReady)
+	// CARLA's connection is live state, not a launch-time fact: /health
+	// re-probes it (the backend caches the answer for 5 s), so keep polling
+	// while the panel is up instead of freezing whatever was true at startup.
+	if (FPlatformTime::Seconds() - LastHealthPollAt >= 5.0)
+	{
+		LastHealthPollAt = FPlatformTime::Seconds();
+		Api->LoadHealth();
+	}
+	if (bReady != bLastBackendReady ||
+		Api->IsCarlaConnected() != bLastCarlaConnected ||
+		Api->HasCarlaState() != bLastCarlaKnown)
 	{
 		bLastBackendReady = bReady;
+		bLastCarlaConnected = Api->IsCarlaConnected();
+		bLastCarlaKnown = Api->HasCarlaState();
 		UpdateChrome();
 	}
 	return EActiveTimerReturnType::Continue;

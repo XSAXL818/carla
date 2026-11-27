@@ -369,6 +369,34 @@ void FTestPlatformApi::LoadCatalog()
 	});
 }
 
+// ---------------------------------------------------------------------- //
+// health: is CARLA actually up?
+// ---------------------------------------------------------------------- //
+void FTestPlatformApi::LoadHealth()
+{
+	TWeakPtr<FTestPlatformApi> Weak = AsShared();
+
+	GetJson(TEXT("/health"), [Weak](bool bOk, const TSharedPtr<FJsonObject>& Root)
+	{
+		TSharedPtr<FTestPlatformApi> This = Weak.Pin();
+		if (!This.IsValid())
+		{
+			return;
+		}
+		// /health carries {"carla": {"connected": bool, ...}}. Without that
+		// block the state stays unknown: a backend that answers with the
+		// simulator closed must not be reported as a live CARLA connection.
+		bool bConnected = false;
+		const TSharedPtr<FJsonObject>* Carla = nullptr;
+		if (bOk && Root.IsValid())
+		{
+			Root->TryGetObjectField(TEXT("carla"), Carla);
+		}
+		This->bCarlaKnown = Carla && (*Carla)->TryGetBoolField(TEXT("connected"), bConnected);
+		This->bCarlaConnected = This->bCarlaKnown && bConnected;
+	});
+}
+
 void FTestPlatformApi::SelectMap(const FString& MapId)
 {
 	TWeakPtr<FTestPlatformApi> Weak = AsShared();

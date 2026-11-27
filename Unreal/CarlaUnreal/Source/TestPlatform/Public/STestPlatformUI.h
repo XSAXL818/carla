@@ -145,6 +145,11 @@ private:
 	bool bLoadingMap = false;
 	bool bListsBuilt = false;
 	bool bLastBackendReady = false;
+	/** last chrome state pushed to the top bar: CARLA's connection is live */
+	bool bLastCarlaConnected = false;
+	bool bLastCarlaKnown = false;
+	/** seconds since the last GET /health poll (see TickRefresh) */
+	double LastHealthPollAt = 0.0;
 	bool bWarnStatus = false;
 	FString QueuedMapId;
 	bool IsDraggingView = false;
