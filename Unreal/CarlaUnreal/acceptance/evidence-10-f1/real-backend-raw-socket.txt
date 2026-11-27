@@ -1,0 +1,16 @@
+connected 127.0.0.1:8799 local=('127.0.0.1', 55976)
+1 GET /health?force=true: HTTP/1.1 200 OK in 1021.5 ms
+    content-length: 453
+    body[:160]=b'{"backend":{"ok":true,"host":"127.0.0.1","port":8799},"carla":{"connected":false,"host":"127.0.0.1","port":2005,"error":"time-out of 1000ms while waiting for th' extra=b''
+2 POST /sessions/preview_map: HTTP/1.1 200 OK in 6.0 ms
+    content-length: 352
+    body[:160]=b'{"id":"20261128-011538-c582e3","state":"preview_loading","error":null,"map":"Town01","tick":0,"sim_time":0.0,"traffic":0,"walkers":0,"preview_degraded":false,"e' extra=b''
+3 GET /health?force=true (same socket): HTTP/1.1 200 OK in 2048.7 ms
+    content-length: 453
+    body[:160]=b'{"backend":{"ok":true,"host":"127.0.0.1","port":8799},"carla":{"connected":false,"host":"127.0.0.1","port":2005,"error":"time-out of 1000ms while waiting for th' extra=b''
+4 POST /sessions/preview_map (2nd): HTTP/1.1 200 OK in 2.4 ms
+    content-length: 352
+    body[:160]=b'{"id":"20261128-011540-e1e71e","state":"preview_loading","error":null,"map":"Town03","tick":0,"sim_time":0.0,"traffic":0,"walkers":0,"preview_degraded":false,"e' extra=b''
+5 GET /health?force=true (same socket): HTTP/1.1 200 OK in 2043.8 ms
+    content-length: 453
+    body[:160]=b'{"backend":{"ok":true,"host":"127.0.0.1","port":8799},"carla":{"connected":false,"host":"127.0.0.1","port":2005,"error":"time-out of 1000ms while waiting for th' extra=b''

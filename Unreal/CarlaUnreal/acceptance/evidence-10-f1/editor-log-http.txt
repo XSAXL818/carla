@@ -1,0 +1,8 @@
+LogTestPlatform: CARLA test platform runtime module started
+LogTestPlatform: test platform UI added to the game viewport
+LogHttp: Warning: HTTP request timed out after 12.00 seconds URL=http://127.0.0.1:8765/maps
+LogHttp: Warning: HTTP request timed out after 12.00 seconds URL=http://127.0.0.1:8765/vehicles
+LogHttp: Warning: HTTP request timed out after 12.00 seconds URL=http://127.0.0.1:8765/traffic
+LogHttp: Warning: HTTP request timed out after 12.00 seconds URL=http://127.0.0.1:8765/weather
+LogHttp: Warning: HTTP request timed out after 12.00 seconds URL=http://127.0.0.1:8765/algorithms
+LogTestPlatform: spawned runtime preview camera
