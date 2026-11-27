@@ -264,13 +264,17 @@
 
 UE 侧 C++ 负责：把 Slate 面板挂到 game viewport、按后端状态驱动预览/跟车相机、启动并轮询 Python 后端。入口是控制台命令 `TestPlatform.Panel`（0 隐藏），没有编辑器菜单项。后端自动启动由控制台变量 `TestPlatform.BackendAutoStart` 控制（默认 1；设为 0 时只连不拉）；解释器默认取 `C:/SoftWare/MiniConda/envs/chat_carla/python.exe`，不存在时退回 PATH 上的 `python.exe`，也可用命令行 `-TestPlatformPython=` 指定。拉起前先向解析出的基址发一次 `GET /health`（走 HTTP 模块线程，超时 2 s，不占游戏线程）；有应答就不重复拉起，没有应答才启动一次 `run.py`，并且发起过一次拉起后不再重复探测。
 
+面板不要求后端在打开时就位：`/health` 每 2 s 探一次（就绪后回到 5 s），后端一旦应答就每 3 s 重试一次目录（`/maps`、`/vehicles`、`/weather`、`/traffic`、`/algorithms`，同一轮未返回前不叠加），目录就绪后停止重试。因此后端晚于面板启动（自动拉起、手动运行或点「启动后端」）也会在几秒内被接管，卡片自动消失，不需要点「重试」。卡片按 `/health` 的实时结果区分三种状态：探测中（尚无应答）、后端已应答但目录未读完（“正在接管”）、后端不可达（“配置后端未运行”）；后端窗口被关掉后卡片会重新出现，即使目录还缓存着。
+
+卡片上还有一个「启动后端」按钮，只在后端不可达时出现；它与控制台命令 `TestPlatform.StartBackend` 走同一条 `StartBackendNow()`：先探一次 `/health`，有应答就拒绝（不拉起第二个实例），没有应答才用下面的可见终端窗口启动 `run.py`。显式启动可以绕过一次性闩锁和 8 s 限流；按钮在等待应答期间显示“启动中…”并禁用，20 s 无应答就把失败原因留在卡片上。测试时不方便点击按钮，用 `-ExecCmds="TestPlatform.StartBackend,..."` 即可触发同一条代码路径。
+
 自动拉起**不再是隐藏进程**，而是一个可见的 Windows Terminal 窗口（`UnrealEditor -game` 下同理）：
 
 - 标题固定为 `CARLA TestPlatform Backend`：`--suppressApplicationTitle` 让 cmd / python 改不了它，操作员照这个名字找窗口；
 - `wt.exe -w -1 nt ... -d "<backend 目录>"` 开的是**独立窗口**，不是塞进操作员已开窗口的标签页——否则“关窗口”会连别人的标签一起关掉；
 - 窗口里跑 `cmd /k "chcp 65001>nul && <python> run.py"`：`cmd /k` 让 python 退出后窗口还留着，traceback 不会跟着一起消失；
 - stdout/stderr 就是这个窗口的实时输出（面板不再持有管道），`TESTPLATFORM_HOST` / `TESTPLATFORM_PORT` 照旧在拉起前写进环境，后端仍绑面板探测的那个端点；
-- 关掉窗口 = 停掉后端：控制台一关，python 随之结束，8765 不再监听，面板下一次 `/health` 探不到就显示“配置后端未运行”（顶部服务器小条此时是 `未知`，因为探测本身没有应答，见 `STestPlatformUI::UpdateChrome` 里 未知/未连接 的区分）；
+- 关掉窗口 = 停掉后端：控制台一关，python 随之结束，8765 不再监听，面板下一次 `/health` 探不到就显示“配置后端未运行”（顶部服务器小条此时是 `未知`，因为探测本身没有应答，见 `STestPlatformUI::UpdateChrome` 里 未知/未连接 的区分）；如果关窗时预览会话正把世界置于同步模式，引擎在 15 s 收不到 tick cue 后自动回退到异步模式（`FCarlaEngine::OnPreTick`），不会把编辑器一起卡死，面板随后照常刷新；
 - 手动关窗之后不会被重拉：一次性闩锁 `bBackendSpawnAttempted` 仍然只在第一次拉发起前置位，没有任何重试路径；
 - 编辑器退出**不杀**这个进程（`ShutdownModule` 不碰它，也不放 job object 里），窗口留在操作员手里。
 

@@ -48,10 +48,20 @@ private:
 
 	void TryStartBackend();
 
+	/**
+	 * Starts the backend on an explicit user request (「启动后端」 button and the
+	 * `TestPlatform.StartBackend` console command). Probes /health first, so a
+	 * backend that is already answering is never duplicated; unlike the automatic
+	 * path it bypasses the one-shot latch and the 8 s rate limit. Returns false
+	 * (and OutError) only when the request cannot be issued at all.
+	 */
+	bool StartBackendNow(FString& OutError);
+
 	/** Completion of the GET /health probe that decides whether run.py is needed. */
 	void OnBackendProbeResponse(FHttpRequestPtr Request,
 		FHttpResponsePtr Response, bool bConnectedSuccessfully);
-	void SpawnBackend(const FString& Host, int32 Port);
+	/** bExplicit is the user-requested launch: it bypasses latch and rate limit. */
+	bool SpawnBackend(const FString& Host, int32 Port, bool bExplicit = false);
 	FString BackendDir() const;
 	FString PythonExe() const;
 
@@ -81,6 +91,8 @@ private:
 	double LastInputAssert = 0.0;
 	bool bBackendSpawnAttempted = false;
 	bool bBackendProbeInFlight = false;
+	/** the in-flight probe belongs to an explicit start (spawns on "no answer") */
+	bool bBackendProbeIsManual = false;
 	FProcHandle BackendProcess;
 	TSharedPtr<IHttpRequest, ESPMode::ThreadSafe> PollRequest;
 	TSharedPtr<IHttpRequest, ESPMode::ThreadSafe> BackendProbeRequest;

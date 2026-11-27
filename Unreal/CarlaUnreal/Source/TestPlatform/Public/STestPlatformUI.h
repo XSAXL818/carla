@@ -54,6 +54,8 @@ public:
 	void SetSessionLoadInFlight(bool bInFlight);
 	void ReloadCatalog();
 	bool IsBackendReady() const;
+	/** GET /health is currently answering: the backend process is up. */
+	bool IsBackendReachable() const;
 	bool IsLoadingMap() const { return bLoadingMap; }
 
 	FPlatformSelection& Selection() { return Config; }
@@ -62,6 +64,14 @@ public:
 	TFunction<void(FVector2D)> OnPan;
 	TFunction<void(float)> OnZoom;
 	TFunction<void()> OnResetView;
+	/**
+	 * Starts the Python backend on the user's explicit request (the 「启动后端」
+	 * button). Bound by the module to the same launch path the automatic start
+	 * uses. Returns false and fills OutError when the launch cannot even be
+	 * requested; success means "the request was issued", not "python is up" —
+	 * the callbacks then wait for /health and the catalog.
+	 */
+	TFunction<bool(FString& /*OutError*/)> OnStartBackend;
 
 private:
 	// ---- construction
@@ -97,6 +107,16 @@ private:
 	void RebuildSummary();
 	void UpdateChrome();
 	EActiveTimerReturnType TickRefresh(double Time, float DeltaTime);
+
+	// ---- backend card (state follows the live /health answer, see UpdateChrome)
+	FText OfflineTitle() const;
+	FText OfflineHint() const;
+	EVisibility OfflineCardVisibility() const;
+	EVisibility OfflineErrorVisibility() const;
+	EVisibility StartBackendButtonVisibility() const;
+	bool IsStartBackendEnabled() const;
+	FText StartBackendLabel() const;
+	void RequestBackendStart();
 
 	/** True while a load_world is in flight: the /health probe cannot tell then. */
 	bool IsCarlaProbeBlocked() const { return bLoadingMap || bSessionLoadInFlight; }
@@ -179,6 +199,18 @@ private:
 	bool bProbeBlocked = false;
 	/** seconds since the last GET /health poll (see TickRefresh) */
 	double LastHealthPollAt = 0.0;
+	/**
+	 * Panel lifetime and backend-adoption bookkeeping. A backend that appears
+	 * after Construct is adopted by re-issuing LoadCatalog() while /health
+	 * answers, spaced out and never overlapping an in-flight attempt.
+	 */
+	double ConstructedAt = 0.0;
+	double LastCatalogAttemptAt = 0.0;
+	bool bLoggedBackendAnswer = false;
+	/** explicit 启动后端 request in flight; the card shows a disabled busy state */
+	bool bBackendStartPending = false;
+	double BackendStartRequestedAt = 0.0;
+	FString BackendStartError;
 	bool bWarnStatus = false;
 	FString QueuedMapId;
 	bool IsDraggingView = false;

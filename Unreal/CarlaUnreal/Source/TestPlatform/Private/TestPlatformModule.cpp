@@ -138,6 +138,34 @@ void FTestPlatformModule::StartupModule()
 				}
 			}));
 	}
+	// Same action as the 「启动后端」 button (the button calls StartBackendNow too),
+	// exposed so the launch path can be exercised without a click.
+	if (IConsoleManager::Get().FindConsoleObject(TEXT("TestPlatform.StartBackend")) == nullptr)
+	{
+		IConsoleManager::Get().RegisterConsoleCommand(
+			TEXT("TestPlatform.StartBackend"),
+			TEXT("Start the Python backend in a visible terminal window if it is not already answering."),
+			FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+			{
+				FTestPlatformModule* Module = GModuleInstance;
+				if (!Module)
+				{
+					return;
+				}
+				FString Error;
+				if (Module->StartBackendNow(Error))
+				{
+					UE_LOG(LogTestPlatform, Log,
+						TEXT("TestPlatform.StartBackend: probing /health before spawning %s"),
+						*FTestPlatformModule::GetPanelUrl());
+				}
+				else
+				{
+					UE_LOG(LogTestPlatform, Warning,
+						TEXT("TestPlatform.StartBackend: %s"), *Error);
+				}
+			}));
+	}
 }
 
 void FTestPlatformModule::ShutdownModule()
@@ -190,6 +218,8 @@ void FTestPlatformModule::EnsureUI(UGameViewportClient* ViewportClient)
 		UI->OnPan = [this](FVector2D Delta) { CameraRig.AddUserPan(Delta); };
 		UI->OnZoom = [this](float Delta) { CameraRig.AddUserZoom(Delta); };
 		UI->OnResetView = [this]() { CameraRig.ResetUserView(); };
+		// The 「启动后端」 button and TestPlatform.StartBackend share this one path.
+		UI->OnStartBackend = [this](FString& OutError) { return StartBackendNow(OutError); };
 	}
 	ViewportClient->AddViewportWidgetContent(UI.ToSharedRef(), 10);
 	bPanelAdded = true;
@@ -259,6 +289,69 @@ FString FTestPlatformModule::PythonExe() const
 	return TEXT("python.exe");
 }
 
+bool FTestPlatformModule::StartBackendNow(FString& OutError)
+{
+	OutError.Reset();
+	FString Host;
+	int32 Port = 0;
+	if (!ParseBackendEndpoint(GetPanelUrl(), Host, Port))
+	{
+		OutError = FString::Printf(
+			TEXT("无法启动后端：解析不了后端地址 %s"), *GetPanelUrl());
+		return false;
+	}
+	if (!IsLoopbackHost(Host))
+	{
+		OutError = FString::Printf(
+			TEXT("无法启动后端：%s 不是本机地址，不能在本机拉起 run.py"), *Host);
+		return false;
+	}
+	// Fail here, while the UI can still show the reason, rather than opening a
+	// terminal window that immediately prints a missing-file error.
+	const FString Dir = BackendDir();
+	if (!FPaths::FileExists(FPaths::Combine(Dir, TEXT("run.py"))))
+	{
+		OutError = FString::Printf(TEXT("无法启动后端：找不到 %s"), *FPaths::Combine(Dir, TEXT("run.py")));
+		return false;
+	}
+	if (!FPaths::FileExists(PythonExe()))
+	{
+		OutError = FString::Printf(TEXT("无法启动后端：找不到解释器 %s"), *PythonExe());
+		return false;
+	}
+	if (bBackendProbeInFlight)
+	{
+		OutError = TEXT("正在检测后端，请稍后再试");
+		return false;
+	}
+
+	// Reuse the same liveness probe the automatic path uses. Its answer decides
+	// whether a launch is needed at all, so an answering backend is never
+	// duplicated even though this path bypasses the one-shot latch.
+	bBackendProbeInFlight = true;
+	bBackendProbeIsManual = true;
+	BackendProbeRequest = FHttpModule::Get().CreateRequest();
+	BackendProbeRequest->SetURL(GetPanelUrl() + TEXT("/health"));
+	BackendProbeRequest->SetVerb(TEXT("GET"));
+	BackendProbeRequest->SetTimeout(2.0f);
+	BackendProbeRequest->OnProcessRequestComplete().BindRaw(
+		this, &FTestPlatformModule::OnBackendProbeResponse);
+	if (!BackendProbeRequest->ProcessRequest())
+	{
+		bBackendProbeInFlight = false;
+		bBackendProbeIsManual = false;
+		BackendProbeRequest.Reset();
+		// The probe could not be queued at all. This is an explicit request, so
+		// try the launch instead of failing: the window is the user's feedback.
+		if (!SpawnBackend(Host, Port, /*bExplicit=*/true))
+		{
+			OutError = TEXT("无法启动后端：终端窗口没有创建成功，请查看日志");
+			return false;
+		}
+	}
+	return true;
+}
+
 void FTestPlatformModule::TryStartBackend()
 {
 	// Give the page/API a grace period to answer on its own, and never spawn a
@@ -320,7 +413,9 @@ void FTestPlatformModule::TryStartBackend()
 void FTestPlatformModule::OnBackendProbeResponse(
 	FHttpRequestPtr Request, FHttpResponsePtr Response, bool bConnectedSuccessfully)
 {
+	const bool bExplicit = bBackendProbeIsManual;
 	bBackendProbeInFlight = false;
+	bBackendProbeIsManual = false;
 	BackendProbeRequest.Reset();
 
 	// Any HTTP answer means the port is taken; a second run.py would only die
@@ -329,7 +424,8 @@ void FTestPlatformModule::OnBackendProbeResponse(
 	{
 		bBackendSpawnAttempted = true;
 		UE_LOG(LogTestPlatform, Log,
-			TEXT("backend already answering on %s (GET /health -> %d), not spawning another"),
+			TEXT("%s backend already answering on %s (GET /health -> %d), not spawning another"),
+			bExplicit ? TEXT("explicit start requested but") : TEXT("backend"),
 			*GetPanelUrl(), Response->GetResponseCode());
 		return;
 	}
@@ -342,8 +438,13 @@ void FTestPlatformModule::OnBackendProbeResponse(
 		return;
 	}
 	UE_LOG(LogTestPlatform, Log,
-		TEXT("no /health answer on %s; spawning run.py once"), *GetPanelUrl());
-	SpawnBackend(Host, Port);
+		TEXT("no /health answer on %s; spawning run.py (%s)"),
+		*GetPanelUrl(), bExplicit ? TEXT("explicit start") : TEXT("automatic start"));
+	if (!SpawnBackend(Host, Port, bExplicit) && bExplicit)
+	{
+		UE_LOG(LogTestPlatform, Error,
+			TEXT("explicit backend start failed: the terminal window could not be created"));
+	}
 }
 
 FString FTestPlatformModule::TerminalLauncher() const
@@ -380,22 +481,28 @@ FString FTestPlatformModule::TerminalLauncher() const
 	return TEXT("wt.exe"); // PATH lookup; CreateProc reports the failure if it is absent too
 }
 
-void FTestPlatformModule::SpawnBackend(const FString& Host, int32 Port)
+bool FTestPlatformModule::SpawnBackend(const FString& Host, int32 Port, bool bExplicit)
 {
-	if (bBackendSpawnAttempted)
+	if (!bExplicit)
 	{
-		return;
+		if (bBackendSpawnAttempted)
+		{
+			return false;
+		}
+		const double Now = FPlatformTime::Seconds();
+		if (Now - LastBackendAttempt < 8.0)
+		{
+			return false; // rate limit only: the poller comes back in a moment
+		}
+		if (FPlatformProcess::IsProcRunning(BackendProcess))
+		{
+			return false;
+		}
 	}
-	const double Now = FPlatformTime::Seconds();
-	if (Now - LastBackendAttempt < 8.0)
-	{
-		return; // rate limit only: the poller comes back in a moment
-	}
-	LastBackendAttempt = Now;
-	if (FPlatformProcess::IsProcRunning(BackendProcess))
-	{
-		return;
-	}
+	// An explicit start (button / console command) bypasses the one-shot latch
+	// and the rate limit, but the caller has already probed /health: a backend
+	// that answers is never duplicated.
+	LastBackendAttempt = FPlatformTime::Seconds();
 	const FString Dir = BackendDir();
 	const FString Script = FPaths::Combine(Dir, TEXT("run.py"));
 	const FString Exe = PythonExe();
@@ -403,16 +510,17 @@ void FTestPlatformModule::SpawnBackend(const FString& Host, int32 Port)
 	{
 		UE_LOG(LogTestPlatform, Warning,
 			TEXT("cannot start backend: script=%s exe=%s"), *Script, *Exe);
-		return;
+		return false;
 	}
 	// run.py reads these at import time; the spawned process inherits them, so
 	// the backend it starts binds to the same endpoint the HTTP client uses.
 	FPlatformMisc::SetEnvironmentVar(TEXT("TESTPLATFORM_HOST"), *Host);
 	FPlatformMisc::SetEnvironmentVar(TEXT("TESTPLATFORM_PORT"), *FString::FromInt(Port));
 
-	// One shot. The latch is taken before either launch so a manual close can
-	// never be answered with a second window: nothing below retries, and the
-	// poller stops calling SpawnBackend once this flag is set.
+	// One shot for the automatic path. The latch is taken before either launch
+	// so a manual close can never be answered with a second window: nothing
+	// below retries, and the poller stops calling SpawnBackend once this flag is
+	// set. An explicit user request is the one caller allowed past the latch.
 	bBackendSpawnAttempted = true;
 
 	// The backend is deliberately visible now: the operator watches its log live
@@ -448,7 +556,7 @@ void FTestPlatformModule::SpawnBackend(const FString& Host, int32 Port)
 			UE_LOG(LogTestPlatform, Log,
 				TEXT("backend window opened via Windows Terminal %s (launcher pid %u): title \"%s\", dir %s, endpoint %s:%d, command \"%s\" run.py"),
 				*Launcher, ProcessId, BackendWindowTitle, *Dir, *Host, Port, *Exe);
-			return;
+			return true;
 		}
 		UE_LOG(LogTestPlatform, Warning,
 			TEXT("could not launch %s for the backend window; falling back to a plain console"),
@@ -473,11 +581,12 @@ void FTestPlatformModule::SpawnBackend(const FString& Host, int32 Port)
 	{
 		UE_LOG(LogTestPlatform, Error,
 			TEXT("cannot start backend: neither Windows Terminal nor %s launched"), *Shell);
-		return;
+		return false;
 	}
 	UE_LOG(LogTestPlatform, Log,
 		TEXT("backend window opened via plain console %s (launcher pid %u): title \"%s\", dir %s, endpoint %s:%d, command \"%s\" run.py"),
 		*Shell, ProcessId, BackendWindowTitle, *Dir, *Host, Port, *Exe);
+	return true;
 }
 
 // ---------------------------------------------------------------------- //

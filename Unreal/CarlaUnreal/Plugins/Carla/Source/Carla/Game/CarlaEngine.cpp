@@ -943,9 +943,32 @@ void FCarlaEngine::OnPreTick(UWorld *World, ELevelTick TickType, float DeltaSeco
   }
 
   // process RPC commands
+  const double SyncWaitStarted = FPlatformTime::Seconds();
   do
   {
     Server.RunSome(1u);
+    // A synchronous client that dies (the test platform backend window is
+    // closed, or the process is killed) can never send the next tick cue.
+    // Waiting forever freezes the game thread, and with it the panel that has
+    // to report the disconnection. A live client ticks every frame, so a long
+    // gap means nobody is driving the clock: fall back to asynchronous mode.
+    static constexpr double SyncCueTimeoutSeconds = 15.0;
+    if (bSynchronousMode &&
+        (FPlatformTime::Seconds() - SyncWaitStarted) > SyncCueTimeoutSeconds)
+    {
+      UE_LOG(LogCarla, Warning,
+          TEXT("No tick cue for %.0f s in synchronous mode (client gone?); "
+               "switching back to asynchronous so the game thread keeps running"),
+          SyncCueTimeoutSeconds);
+      CurrentSettings.bSynchronousMode = false;
+      CurrentSettings.FixedDeltaSeconds.Reset();
+      bSynchronousMode = false;
+      Server.GetStreamingServer().SetSynchronousMode(false);
+      if (CurrentEpisode != nullptr)
+      {
+        CurrentEpisode->ApplySettings(CurrentSettings);
+      }
+    }
   }
   while (bSynchronousMode && !Server.TickCueReceived());
 

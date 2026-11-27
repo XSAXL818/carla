@@ -3,6 +3,7 @@
 #include "Engine/Texture2D.h"
 #include "HAL/PlatformTime.h"
 #include "ImageUtils.h"
+#include "Misc/OutputDeviceRedirector.h"
 #include "Styling/CoreStyle.h"
 #include "Styling/SlateBrush.h"
 #include "Widgets/Images/SImage.h"
@@ -21,6 +22,8 @@
 #include "Widgets/Text/STextBlock.h"
 
 #define LOCTEXT_NAMESPACE "TestPlatformUI"
+
+DEFINE_LOG_CATEGORY_STATIC(LogTestPlatformUI, Log, All);
 
 namespace
 {
@@ -160,6 +163,11 @@ namespace
 void STestPlatformUI::Construct(const FArguments& InArgs)
 {
 	Api = MakeShared<FTestPlatformApi>();
+	ConstructedAt = FPlatformTime::Seconds();
+	LastCatalogAttemptAt = ConstructedAt;
+	// First attempt: usually fails when the backend is not up yet. TickRefresh
+	// retries it as soon as /health starts answering, so the panel adopts a
+	// backend it did not have at construction (see the retry in TickRefresh).
 	Api->LoadCatalog();
 
 	ChildSlot
@@ -207,37 +215,67 @@ void STestPlatformUI::Construct(const FArguments& InArgs)
 				MakeLoadingOverlay()
 			]
 		]
-		// backend offline
+		// backend offline / starting / waiting to be adopted
 		+ SOverlay::Slot()
 		[
 			SNew(SBox)
-			.Visibility_Lambda([this]()
-			{
-				const bool bUp = IsBackendReady();
-				return (!bUp && bUIVisible) ? EVisibility::Visible : EVisibility::Collapsed;
-			})
+			.Visibility_Lambda([this]() { return OfflineCardVisibility(); })
 			.HAlign(HAlign_Center)
 			.VAlign(VAlign_Center)
 			[
 				Card(SNew(SVerticalBox)
 					+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center)
 					[
-						Text(FString::Printf(TEXT("配置后端未运行（%s）"),
-							*FTestPlatformApi::RootUrl()), 14, true, ColWarn)
+						SNew(STextBlock)
+						.Text_Lambda([this]() { return OfflineTitle(); })
+						.Font(F(14, true)).ColorAndOpacity(FSlateColor(ColWarn))
 					]
 					+ SVerticalBox::Slot().AutoHeight().Padding(FMargin(0.f, 8.f, 0.f, 0.f))
 					[
-						Text(LOCTEXT("OfflineHint",
-							"地图、路线与仿真会话都由它提供，启动后会自动接管。\n"
-							"手动启动：Source/TestPlatform/Platform/backend 下运行 python run.py").ToString(), 11, false, ColMuted)
+						SNew(STextBlock)
+						.Text_Lambda([this]() { return OfflineHint(); })
+						.Font(F(11)).ColorAndOpacity(FSlateColor(ColMuted))
+						.WrapTextAt(600.f).AutoWrapText(true)
 					]
-					+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center).Padding(FMargin(0.f, 12.f, 0.f, 0.f))
+					+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center)
+					.Padding(FMargin(0.f, 8.f, 0.f, 0.f))
 					[
-						SNew(SButton)
-						.ButtonStyle(&BtnGhost())
-						.ContentPadding(FMargin(16.f, 6.f))
-						.OnClicked_Lambda([this]() { ReloadCatalog(); return FReply::Handled(); })
-						[Text(LOCTEXT("Retry", "重试").ToString(), 11)]
+						SNew(STextBlock)
+						.Text_Lambda([this]() { return FText::FromString(BackendStartError); })
+						.Font(F(10, true)).ColorAndOpacity(FSlateColor(ColWarn))
+						.Visibility_Lambda([this]() { return OfflineErrorVisibility(); })
+						.WrapTextAt(600.f).AutoWrapText(true)
+					]
+					+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center)
+					.Padding(FMargin(0.f, 12.f, 0.f, 0.f))
+					[
+						SNew(SHorizontalBox)
+						+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin(0.f, 0.f, 8.f, 0.f))
+						[
+							SNew(SButton)
+							.ButtonStyle(&BtnPrimary())
+							.ContentPadding(FMargin(18.f, 6.f))
+							.Visibility_Lambda([this]() { return StartBackendButtonVisibility(); })
+							.IsEnabled_Lambda([this]() { return IsStartBackendEnabled(); })
+							.OnClicked_Lambda([this]()
+							{
+								RequestBackendStart();
+								return FReply::Handled();
+							})
+							[
+								SNew(STextBlock)
+								.Text_Lambda([this]() { return StartBackendLabel(); })
+								.Font(F(11, true)).ColorAndOpacity(FSlateColor(ColInk))
+							]
+						]
+						+ SHorizontalBox::Slot().AutoWidth()
+						[
+							SNew(SButton)
+							.ButtonStyle(&BtnGhost())
+							.ContentPadding(FMargin(16.f, 6.f))
+							.OnClicked_Lambda([this]() { ReloadCatalog(); return FReply::Handled(); })
+							[Text(LOCTEXT("Retry", "重试").ToString(), 11)]
+						]
 					])
 			]
 		]
@@ -1530,6 +1568,7 @@ void STestPlatformUI::SyncCarlaProbeWindow()
 
 void STestPlatformUI::ReloadCatalog()
 {
+	LastCatalogAttemptAt = FPlatformTime::Seconds();
 	if (Api.IsValid())
 	{
 		Api->LoadCatalog();
@@ -1540,6 +1579,124 @@ void STestPlatformUI::ReloadCatalog()
 bool STestPlatformUI::IsBackendReady() const
 {
 	return Api.IsValid() && Api->IsReady();
+}
+
+bool STestPlatformUI::IsBackendReachable() const
+{
+	// HasBackendAnswer() keeps the card from claiming "not running" before the
+	// first /health has come back: until then the state is simply unknown.
+	return Api.IsValid() && Api->HasBackendAnswer() && Api->IsBackendResponding();
+}
+
+EVisibility STestPlatformUI::OfflineCardVisibility() const
+{
+	// Hidden only when the backend is answering *and* its catalog is loaded.
+	// Because liveness is a live /health fact rather than "the catalog loaded
+	// once", closing the backend window brings the card back over the cached
+	// lists, which is what the operator needs to see.
+	const bool bUsable = IsBackendReachable() && Api.IsValid() && Api->IsReady();
+	return (bUIVisible && !bUsable) ? EVisibility::Visible : EVisibility::Collapsed;
+}
+
+FText STestPlatformUI::OfflineTitle() const
+{
+	if (!Api.IsValid())
+	{
+		return LOCTEXT("OfflineNoApi", "配置后端未运行");
+	}
+	// Three distinct states, so the card never says "not running" while the
+	// backend answers: probing (no answer yet), adopting (answer, no catalog
+	// yet), unreachable (the last probe got no answer).
+	if (!Api->HasBackendAnswer())
+	{
+		return FText::FromString(FString::Printf(
+			TEXT("正在检测后端（%s）…"), *FTestPlatformApi::RootUrl()));
+	}
+	if (Api->IsBackendResponding())
+	{
+		return LOCTEXT("OfflineAdopting", "后端已响应，正在接管…");
+	}
+	return FText::FromString(FString::Printf(
+		TEXT("配置后端未运行（%s）"), *FTestPlatformApi::RootUrl()));
+}
+
+FText STestPlatformUI::OfflineHint() const
+{
+	if (!Api.IsValid() || !Api->HasBackendAnswer())
+	{
+		return LOCTEXT("OfflineProbingHint", "正在等待后端应答…");
+	}
+	if (!Api->IsBackendResponding())
+	{
+		return LOCTEXT("OfflineHint",
+			"地图、路线与仿真会话都由它提供；启动后会自动接管，无需手动刷新。\n"
+			"点「启动后端」在终端窗口中启动它，也可以手动运行 python run.py。");
+	}
+	if (!Api->IsReady())
+	{
+		return LOCTEXT("OfflineAdoptingHint",
+			"后端已经应答，正在读取地图、车辆与算法列表；读完后这张卡片会自动消失。");
+	}
+	return FText::GetEmpty();
+}
+
+EVisibility STestPlatformUI::OfflineErrorVisibility() const
+{
+	return (!IsBackendReachable() && !BackendStartError.IsEmpty())
+		? EVisibility::Visible : EVisibility::Collapsed;
+}
+
+EVisibility STestPlatformUI::StartBackendButtonVisibility() const
+{
+	// Only when the backend is unreachable; while a request is in flight the
+	// disabled busy button stays visible until the outcome is known.
+	if (bBackendStartPending)
+	{
+		return EVisibility::Visible;
+	}
+	const bool bUnreachable = Api.IsValid() && Api->HasBackendAnswer()
+		&& !Api->IsBackendResponding();
+	return bUnreachable ? EVisibility::Visible : EVisibility::Collapsed;
+}
+
+bool STestPlatformUI::IsStartBackendEnabled() const
+{
+	return !bBackendStartPending;
+}
+
+FText STestPlatformUI::StartBackendLabel() const
+{
+	return bBackendStartPending
+		? LOCTEXT("BackendStartingBusy", "启动中…")
+		: LOCTEXT("BackendStart", "启动后端");
+}
+
+void STestPlatformUI::RequestBackendStart()
+{
+	if (bBackendStartPending)
+	{
+		return;
+	}
+	// The button is only painted while unreachable, but /health may have
+	// answered between that paint and the click: never start a second instance.
+	if (IsBackendReachable())
+	{
+		SetStatus(LOCTEXT("BackendAlreadyUp", "后端已在应答，无需重复启动").ToString());
+		return;
+	}
+	FString Error;
+	if (!OnStartBackend || !OnStartBackend(Error))
+	{
+		BackendStartError = Error.IsEmpty()
+			? LOCTEXT("BackendStartFailed", "启动后端失败").ToString()
+			: Error;
+		SetStatus(BackendStartError, true);
+		return;
+	}
+	bBackendStartPending = true;
+	BackendStartError.Reset();
+	BackendStartRequestedAt = FPlatformTime::Seconds();
+	SetStatus(LOCTEXT("BackendStarting", "正在终端窗口中启动后端…").ToString());
 }
 
 void STestPlatformUI::UpdateChrome()
@@ -1720,15 +1877,61 @@ EActiveTimerReturnType STestPlatformUI::TickRefresh(double Time, float DeltaTime
 	{
 		return EActiveTimerReturnType::Continue;
 	}
+	const double Now = FPlatformTime::Seconds();
 	const bool bReady = Api->IsReady();
+	const bool bReachable = IsBackendReachable();
 	if (bReady && !bListsBuilt)
 	{
 		RebuildAll();
 	}
+	// The backend may come up after Construct: the module spawns it at ~10 s, or
+	// the operator starts it with the button / by hand. Adopt it without a
+	// click: retry the catalog while /health answers, never overlap attempts,
+	// and stop for good once IsReady() is true (no reload on every tick).
+	if (!bReady && bReachable && !Api->IsCatalogLoadInFlight() &&
+		Now - LastCatalogAttemptAt >= 3.0)
+	{
+		LastCatalogAttemptAt = Now;
+		Api->LoadCatalog();
+	}
+	if (!bLoggedBackendAnswer && bReachable)
+	{
+		bLoggedBackendAnswer = true;
+		UE_LOG(LogTestPlatformUI, Log,
+			TEXT("backend health answered: reachable %.1f s after panel construction"),
+			Now - ConstructedAt);
+		GLog->Flush();
+	}
+	if (bReady && !bLastBackendReady)
+	{
+		UE_LOG(LogTestPlatformUI, Log,
+			TEXT("backend adopted: catalog ready with %d maps, %.1f s after panel construction"),
+			Api->Maps().Num(), Now - ConstructedAt);
+		GLog->Flush();
+	}
+	// Explicit 启动后端: busy until /health answers. A later answer hands over to
+	// the adoption path above; a timeout puts the reason on the card instead of
+	// spinning forever.
+	if (bBackendStartPending)
+	{
+		if (bReachable)
+		{
+			bBackendStartPending = false;
+			BackendStartError.Reset();
+			LastCatalogAttemptAt = 0.0; // adopt on the next tick
+			SetStatus(LOCTEXT("BackendUp", "后端已启动，正在接管…").ToString());
+		}
+		else if (Now - BackendStartRequestedAt > 20.0)
+		{
+			bBackendStartPending = false;
+			BackendStartError = LOCTEXT("BackendStartTimeout",
+				"启动失败：后端在 20 秒内没有应答。请查看「CARLA TestPlatform Backend」窗口里的错误输出。").ToString();
+			SetStatus(BackendStartError, true);
+		}
+	}
 	// a blocking LoadMap can outlive its request (engine-side freeze): never
 	// leave the UI stuck in "loading" forever
-	if (bLoadingMap && LoadStartedAt > 0.0 &&
-		FPlatformTime::Seconds() - LoadStartedAt > 300.0)
+	if (bLoadingMap && LoadStartedAt > 0.0 && Now - LoadStartedAt > 300.0)
 	{
 		bLoadingMap = false;
 		bBusy = false;
@@ -1743,11 +1946,13 @@ EActiveTimerReturnType STestPlatformUI::TickRefresh(double Time, float DeltaTime
 	// re-probes it (the backend caches the answer for 5 s), so keep polling
 	// while the panel is up instead of freezing whatever was true at startup.
 	// Not while a load is in flight though: the probe would only measure the
-	// block (see UpdateChrome / SyncCarlaProbeWindow).
+	// block (see UpdateChrome / SyncCarlaProbeWindow). Poll faster while the
+	// backend is not ready yet: that is the adoption heartbeat.
 	SyncCarlaProbeWindow();
-	if (!IsCarlaProbeBlocked() && FPlatformTime::Seconds() - LastHealthPollAt >= 5.0)
+	const double HealthInterval = (bReady && bReachable) ? 5.0 : 2.0;
+	if (!IsCarlaProbeBlocked() && Now - LastHealthPollAt >= HealthInterval)
 	{
-		LastHealthPollAt = FPlatformTime::Seconds();
+		LastHealthPollAt = Now;
 		Api->LoadHealth();
 	}
 	const bool bEndpointKnown = Api->HasCarlaEndpoint();

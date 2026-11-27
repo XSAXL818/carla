@@ -157,10 +157,23 @@ void FTestPlatformApi::PostJson(
 void FTestPlatformApi::LoadCatalog()
 {
 	TWeakPtr<FTestPlatformApi> Weak = AsShared();
-
-	GetJson(TEXT("/maps"), [Weak](bool bOk, const TSharedPtr<FJsonObject>& Root)
+	// One completion per endpoint below. The panel retries the catalog while the
+	// backend answers but is not ready yet; without this counter a retry could
+	// issue another five requests before the previous five returned.
+	PendingCatalogRequests += 5;
+	auto CatalogReply = [Weak]() -> TSharedPtr<FTestPlatformApi>
 	{
 		TSharedPtr<FTestPlatformApi> This = Weak.Pin();
+		if (This.IsValid())
+		{
+			This->PendingCatalogRequests = FMath::Max(0, This->PendingCatalogRequests - 1);
+		}
+		return This;
+	};
+
+	GetJson(TEXT("/maps"), [Weak, CatalogReply](bool bOk, const TSharedPtr<FJsonObject>& Root)
+	{
+		TSharedPtr<FTestPlatformApi> This = CatalogReply();
 		if (!This.IsValid())
 		{
 			return;
@@ -207,12 +220,19 @@ void FTestPlatformApi::LoadCatalog()
 			}
 		}
 		This->LastError = bOk ? FString() : TEXT("读取地图列表失败");
+		if (bOk)
+		{
+			// A catalog answer is backend liveness evidence too: /health may not
+			// have completed yet when the panel opens against a running backend.
+			This->bBackendResponding = true;
+			This->bBackendAnswerKnown = true;
+		}
 		This->bReady = This->MapsCache.Num() > 0;
 	});
 
-	GetJson(TEXT("/vehicles"), [Weak](bool bOk, const TSharedPtr<FJsonObject>& Root)
+	GetJson(TEXT("/vehicles"), [Weak, CatalogReply](bool bOk, const TSharedPtr<FJsonObject>& Root)
 	{
-		TSharedPtr<FTestPlatformApi> This = Weak.Pin();
+		TSharedPtr<FTestPlatformApi> This = CatalogReply();
 		if (!This.IsValid())
 		{
 			return;
@@ -236,9 +256,9 @@ void FTestPlatformApi::LoadCatalog()
 		}
 	});
 
-	GetJson(TEXT("/weather"), [Weak](bool bOk, const TSharedPtr<FJsonObject>& Root)
+	GetJson(TEXT("/weather"), [Weak, CatalogReply](bool bOk, const TSharedPtr<FJsonObject>& Root)
 	{
-		TSharedPtr<FTestPlatformApi> This = Weak.Pin();
+		TSharedPtr<FTestPlatformApi> This = CatalogReply();
 		if (!This.IsValid())
 		{
 			return;
@@ -262,9 +282,9 @@ void FTestPlatformApi::LoadCatalog()
 		}
 	});
 
-	GetJson(TEXT("/traffic"), [Weak](bool bOk, const TSharedPtr<FJsonObject>& Root)
+	GetJson(TEXT("/traffic"), [Weak, CatalogReply](bool bOk, const TSharedPtr<FJsonObject>& Root)
 	{
-		TSharedPtr<FTestPlatformApi> This = Weak.Pin();
+		TSharedPtr<FTestPlatformApi> This = CatalogReply();
 		if (!This.IsValid())
 		{
 			return;
@@ -289,9 +309,9 @@ void FTestPlatformApi::LoadCatalog()
 		}
 	});
 
-	GetJson(TEXT("/algorithms"), [Weak](bool bOk, const TSharedPtr<FJsonObject>& Root)
+	GetJson(TEXT("/algorithms"), [Weak, CatalogReply](bool bOk, const TSharedPtr<FJsonObject>& Root)
 	{
-		TSharedPtr<FTestPlatformApi> This = Weak.Pin();
+		TSharedPtr<FTestPlatformApi> This = CatalogReply();
 		if (!This.IsValid())
 		{
 			return;
@@ -387,6 +407,10 @@ void FTestPlatformApi::LoadHealth(bool bForce)
 		{
 			return;
 		}
+		// Reachability is independent of the blocked-probe window below: an answer
+		// (even one whose carla.connected must be discarded) proves run.py is up.
+		This->bBackendAnswerKnown = true;
+		This->bBackendResponding = bOk;
 		if (Epoch != This->HealthEpoch)
 		{
 			return;

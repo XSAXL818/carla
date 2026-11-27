@@ -153,6 +153,17 @@ public:
 	 */
 	void InvalidateCarlaState();
 
+	/**
+	 * Liveness of the backend process itself, as last reported by GET /health.
+	 * IsReady() only means "the catalog was loaded once" and stays true after
+	 * the backend dies; this is the signal that follows the process.
+	 */
+	bool IsBackendResponding() const { return bBackendResponding; }
+	/** False until a /health request has completed, so "not running" is not claimed before the first probe. */
+	bool HasBackendAnswer() const { return bBackendAnswerKnown; }
+	/** True while the five catalog requests of a LoadCatalog() call are still outstanding. */
+	bool IsCatalogLoadInFlight() const { return PendingCatalogRequests > 0; }
+
 	bool IsReady() const { return bReady; }
 	const TArray<FMapInfo>& Maps() const { return MapsCache; }
 	const TArray<FVehicleInfo>& Vehicles() const { return VehiclesCache; }
@@ -203,6 +214,11 @@ private:
 	TArray<FAlgoInfo> AlgoCache;
 	TMap<FString, TArray<FMapPreset>> PresetsByMap;
 	bool bReady = false;
+	/** outcome of the last GET /health: the backend process answered (2xx JSON) */
+	bool bBackendResponding = false;
+	bool bBackendAnswerKnown = false;
+	/** outstanding requests of LoadCatalog(), so the poller cannot pile attempts up */
+	int32 PendingCatalogRequests = 0;
 	bool bCarlaConnected = false;
 	bool bCarlaKnown = false;
 	/** carla.host / carla.port from the last /health answer that carried them */

@@ -76,6 +76,11 @@
 * Added **`Util/Tools/RunPythonVersionTests.sh`**, which tests the Python API once per Python version, each in a fresh virtual environment with its wheel. Its stages are offline checks (imports and example compilation with warnings as errors, plus the unit tests), the smoke tests, and a set of examples run headless.
 * `carla-pack install` and `carla-pack verify` on a tarball now report each step and the file being checksummed, instead of staying silent for minutes on a multi-GB pack.
 
+#### Test platform
+
+* The **test platform panel now adopts a backend that starts after it did**: while `/health` answers it retries the catalog every few seconds (without overlapping attempts, and never again once it is ready), so the map/route/vehicle/weather lists load, the offline card disappears and the selection updates without pressing 重试. The card no longer says the backend is not running while it is answering: it distinguishes probing, “backend answered, adopting” and unreachable, and it comes back when the backend window is closed.
+* Added a **启动后端 button** to the offline card and the **`TestPlatform.StartBackend`** console command. Both go through the same launch path as the automatic start (visible Windows Terminal window, fixed title, same environment), show a busy state while the backend comes up, and refuse to start a second instance when `/health` already answers. The engine now returns to asynchronous mode after 15 s without a tick cue, so closing the backend window while a preview session is in synchronous mode no longer freezes the editor.
+
 ### Extensions
 
 #### API changes
