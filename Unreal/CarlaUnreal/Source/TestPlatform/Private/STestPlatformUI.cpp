@@ -999,7 +999,7 @@ void STestPlatformUI::RebuildAgent()
 	[
 		Text(LOCTEXT("AlgoNote",
 			"参数由算法自描述：/algorithms 返回字段 schema（类型 / 范围 / 单位 / 默认值）。"
-			"接入第三方算法只需实现同一个 schema。").ToString(), 9, false, ColDim)
+			"面板控件按内置算法固定，新增算法或参数需同步更新面板。").ToString(), 9, false, ColDim)
 	];
 
 	// behaviour chips straight from the schema enum

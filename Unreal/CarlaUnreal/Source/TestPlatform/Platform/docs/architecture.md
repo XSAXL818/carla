@@ -301,24 +301,32 @@ Source/TestPlatform/
 
 ## 12. 环境与安装（干净检出）
 
+本节命令的工作目录是仓库根 `C:\GameProject\CarlaUE5\carla`（即 `CARLA_ROOT`），文中路径都相对它。
+
 后端跑在本机的 `chat_carla` conda 环境里（`C:\SoftWare\MiniConda\envs\chat_carla`，Python 3.10.21）。干净检出后按四步装：
 
-1. **依赖**：`python -m pip install -r Source/TestPlatform/Platform/backend/requirements.txt`。
+1. **依赖**：`python -m pip install -r Unreal/CarlaUnreal/Source/TestPlatform/Platform/backend/requirements.txt`。
    里面钉的是这台解释器里实测的版本（`fastapi==0.128.8`、`uvicorn==0.39.0`、`pillow==11.3.0`、
    `numpy==1.26.4`、`networkx==3.4.2`）；`numpy` / `networkx` 不是 `app/` 直接 import 的，是
    `PythonAPI/carla/agents/navigation` 里的导航算法要用的。
-2. **CARLA 客户端**：`carla` 不是 PyPI 依赖，`requirements.txt` 因此**故意不钉它**。它由 CARLA 源码里的
-   `PythonAPI/carla`（`pyproject.toml`：name=`carla`、version=`1.0`，scikit-build-core 驱动 CMake）本地构建后
-   以 editable 方式装进同一个解释器：`python -m pip install -e <CARLA 源码根>\PythonAPI\carla`。装好后是
-   site-packages 里的 `carla.cp310-win_amd64.pyd`；本机这份的 `direct_url.json` 指向
+2. **CARLA 客户端**：`carla` 不是 PyPI 依赖，`requirements.txt` 因此**故意不钉它**。它的 `pyproject.toml`
+   **不在版本库里**：`PythonAPI/.gitignore:5` 忽略它，`PythonAPI/CMakeLists.txt:101-104` 在 CMake configure
+   时由 `PythonAPI/carla/pyproject.toml.in` 生成（生成物里 name=`carla`、version=`1.0`，scikit-build-core
+   驱动 CMake）。所以干净检出里**没有**这个文件，`python -m pip install -e PythonAPI/carla` 会直接失败；
+   **必须先 configure 再安装**，只做 editable 安装是不够的：
+   `cmake --preset Release`（`CMakePresets.json`，构建目录 `Build/Release`）生成 `PythonAPI/carla/pyproject.toml`，
+   再 `cmake --build Build/Release --target carla-python-api-install` 构建并装进 PATH 上的 `python`（激活的
+   `chat_carla`；主 Python 版本走 editable 安装，其它已配置版本装对应 wheel，见 `PythonAPI/CMakeLists.txt:175-251`）。
+   装好后是 site-packages 里的 `carla.cp310-win_amd64.pyd`；本机这份的 `direct_url.json` 指向
    `C:\GameProject\CarlaUE5\CarlaUE5\PythonAPI\carla`，与本仓库的 `CARLA_ROOT` 不保证是同一棵树。
 3. **导航算法**：`BehaviorAgent` / `BasicAgent` 不在 wheel/pyd 里，后端把 `CARLA_ROOT/PythonAPI/carla` 直接插进
    `sys.path`（`paths.PYTHON_API_CARLA`；`CARLA_ROOT` 默认 `C:\GameProject\CarlaUE5\carla`，可用同名环境变量
    覆盖）。所以 `CARLA_ROOT` 必须指向含 `PythonAPI/carla/agents` 的源码树，否则 `POST /sessions/{id}/start`
    在 `_build_agent()` 里抛 `ImportError`。
-4. **启动**：`cd Source/TestPlatform/Platform/backend` 后 `python run.py`（默认 `127.0.0.1:8765`，可用
-   `TESTPLATFORM_HOST` / `TESTPLATFORM_PORT` 改；UE 侧用 `-TestPlatformBackend=` 指同一地址）。模拟器没起时
-   `/health` 照样返回 200，只是 `carla.connected` 为 `false` 并带上连接错误；配置类接口照常可用。
+4. **启动**：`cd Unreal/CarlaUnreal/Source/TestPlatform/Platform/backend` 后 `python run.py`
+   （默认 `127.0.0.1:8765`，可用 `TESTPLATFORM_HOST` / `TESTPLATFORM_PORT` 改；UE 侧用
+   `-TestPlatformBackend=` 指同一地址）。模拟器没起时 `/health` 照样返回 200，只是 `carla.connected` 为
+   `false` 并带上连接错误；配置类接口照常可用。
 
 ## 13. 已确认的边界
 
