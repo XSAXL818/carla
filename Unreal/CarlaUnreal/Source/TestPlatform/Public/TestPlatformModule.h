@@ -19,8 +19,9 @@ class UWorld;
  * Runtime module of the CARLA test platform (ships in packaged builds).
  *
  * Hosts the native configuration UI on the game viewport, owns the runtime
- * camera actor, keeps the Python backend alive, and turns session state changes
- * into the continuous camera move from the map overview into the driving ego.
+ * camera actor, starts the Python backend in a window the operator can watch and
+ * close, and turns session state changes into the continuous camera move from the
+ * map overview into the driving ego.
  */
 class FTestPlatformModule : public IModuleInterface
 {
@@ -53,6 +54,10 @@ private:
 	void SpawnBackend(const FString& Host, int32 Port);
 	FString BackendDir() const;
 	FString PythonExe() const;
+
+	/** wt.exe (or the -TestPlatformBackendLauncher= override) for the visible
+	 *  backend window; empty when no usable launcher exists. */
+	FString TerminalLauncher() const;
 
 	void RequestSessionState();
 	void OnSessionStateResponse(FHttpRequestPtr Request,

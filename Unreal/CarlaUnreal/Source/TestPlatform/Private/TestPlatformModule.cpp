@@ -28,6 +28,20 @@ namespace
 	FTestPlatformModule* GModuleInstance = nullptr;
 	const TCHAR* DefaultPython = TEXT("C:/SoftWare/MiniConda/envs/chat_carla/python.exe");
 
+	/**
+	 * Fixed title of the window the backend runs in. The operator finds the
+	 * backend by this name and stops it by closing that window, so nothing is
+	 * allowed to rename it (see --suppressApplicationTitle below).
+	 */
+	const TCHAR* BackendWindowTitle = TEXT("CARLA TestPlatform Backend");
+
+	/** cmd.exe, for the console fallback when Windows Terminal cannot be used. */
+	FString ConsoleShell()
+	{
+		const FString ComSpec = FPlatformMisc::GetEnvironmentVariable(TEXT("ComSpec"));
+		return ComSpec.IsEmpty() ? FString(TEXT("C:/Windows/System32/cmd.exe")) : ComSpec;
+	}
+
 	/** 0 disables the automatic run.py spawn so a hand-started backend wins. */
 	TAutoConsoleVariable<int32> CVarBackendAutoStart(
 		TEXT("TestPlatform.BackendAutoStart"),
@@ -332,6 +346,40 @@ void FTestPlatformModule::OnBackendProbeResponse(
 	SpawnBackend(Host, Port);
 }
 
+FString FTestPlatformModule::TerminalLauncher() const
+{
+	// Testing hook: point -TestPlatformBackendLauncher= at a missing file and the
+	// console fallback runs instead. An override that does not exist is treated as
+	// "no launcher" rather than being launched blindly.
+	FString Override;
+	if (FParse::Value(
+			FCommandLine::Get(), TEXT("TestPlatformBackendLauncher="), Override)
+		&& !Override.IsEmpty())
+	{
+		if (FPaths::FileExists(Override))
+		{
+			return Override;
+		}
+		UE_LOG(LogTestPlatform, Warning,
+			TEXT("backend launcher override %s does not exist"), *Override);
+		return FString();
+	}
+	// Windows Terminal is installed per user through the Store, so the app
+	// execution alias under LOCALAPPDATA is the path that does not depend on PATH.
+	const FString LocalAppData =
+		FPlatformMisc::GetEnvironmentVariable(TEXT("LOCALAPPDATA"));
+	if (!LocalAppData.IsEmpty())
+	{
+		const FString Alias = FPaths::Combine(
+			LocalAppData, TEXT("Microsoft/WindowsApps/wt.exe"));
+		if (FPaths::FileExists(Alias))
+		{
+			return Alias;
+		}
+	}
+	return TEXT("wt.exe"); // PATH lookup; CreateProc reports the failure if it is absent too
+}
+
 void FTestPlatformModule::SpawnBackend(const FString& Host, int32 Port)
 {
 	if (bBackendSpawnAttempted)
@@ -361,13 +409,75 @@ void FTestPlatformModule::SpawnBackend(const FString& Host, int32 Port)
 	// the backend it starts binds to the same endpoint the HTTP client uses.
 	FPlatformMisc::SetEnvironmentVar(TEXT("TESTPLATFORM_HOST"), *Host);
 	FPlatformMisc::SetEnvironmentVar(TEXT("TESTPLATFORM_PORT"), *FString::FromInt(Port));
-	uint32 ProcessId = 0;
-	const FString Params = FString::Printf(TEXT("\"%s\""), *Script);
+
+	// One shot. The latch is taken before either launch so a manual close can
+	// never be answered with a second window: nothing below retries, and the
+	// poller stops calling SpawnBackend once this flag is set.
 	bBackendSpawnAttempted = true;
+
+	// The backend is deliberately visible now: the operator watches its log live
+	// and stops it by closing the window. So every launch here is non-hidden, and
+	// the editor holds no job object over it - closing the editor therefore leaves
+	// the window (and the backend) running under the operator's control. The
+	// editor's ShutdownModule does not terminate it either.
+	//
+	// Window geometry and quoting, all of which were prototyped by hand:
+	//   * -w -1 asks Windows Terminal for a window of its own. Without it the tab
+	//     lands in whatever window happens to be open, and "close the window"
+	//     would take the operator's other tabs with it.
+	//   * --suppressApplicationTitle pins the title so neither cmd nor python can
+	//     rename the window that is supposed to be recognisable.
+	//   * cmd /k keeps the window open after python exits, so a traceback stays
+	//     readable instead of vanishing with the process.
+	//   * wt re-tokenises this command line before handing it to the child, so a
+	//     nested quote around the interpreter does not survive. The interpreter
+	//     path must therefore stay free of spaces (the conda path is); a python
+	//     path with spaces needs a wrapper script instead.
+	uint32 ProcessId = 0;
+	const FString Launcher = TerminalLauncher();
+	if (!Launcher.IsEmpty())
+	{
+		const FString Params = FString::Printf(
+			TEXT("-w -1 nt --title \"%s\" --suppressApplicationTitle -d \"%s\" cmd /k \"chcp 65001>nul && \"%s\" run.py\""),
+			BackendWindowTitle, *Dir, *Exe);
+		BackendProcess = FPlatformProcess::CreateProc(
+			*Launcher, *Params, /*Detached*/true, /*Hidden*/false, /*ReallyHidden*/false,
+			&ProcessId, 0, *Dir, nullptr, nullptr);
+		if (BackendProcess.IsValid())
+		{
+			UE_LOG(LogTestPlatform, Log,
+				TEXT("backend window opened via Windows Terminal %s (launcher pid %u): title \"%s\", dir %s, endpoint %s:%d, command \"%s\" run.py"),
+				*Launcher, ProcessId, BackendWindowTitle, *Dir, *Host, Port, *Exe);
+			return;
+		}
+		UE_LOG(LogTestPlatform, Warning,
+			TEXT("could not launch %s for the backend window; falling back to a plain console"),
+			*Launcher);
+	}
+	else
+	{
+		UE_LOG(LogTestPlatform, Warning,
+			TEXT("no Windows Terminal launcher available; falling back to a plain console"));
+	}
+
+	// Fallback: a plain visible console window with the same fixed title and the
+	// same live output. `start` is what gives it a window of its own; its first
+	// quoted argument is the title and the rest is the command. Never hidden.
+	const FString Shell = ConsoleShell();
+	const FString Params = FString::Printf(
+		TEXT("/c start \"%s\" \"%s\" run.py"), BackendWindowTitle, *Exe);
 	BackendProcess = FPlatformProcess::CreateProc(
-		*Exe, *Params, true, true, true, &ProcessId, 0, *Dir, nullptr, nullptr);
-	UE_LOG(LogTestPlatform, Log, TEXT("backend spawn requested (pid %u) from %s on %s:%d"),
-		ProcessId, *Dir, *Host, Port);
+		*Shell, *Params, /*Detached*/true, /*Hidden*/false, /*ReallyHidden*/false,
+		&ProcessId, 0, *Dir, nullptr, nullptr);
+	if (!BackendProcess.IsValid())
+	{
+		UE_LOG(LogTestPlatform, Error,
+			TEXT("cannot start backend: neither Windows Terminal nor %s launched"), *Shell);
+		return;
+	}
+	UE_LOG(LogTestPlatform, Log,
+		TEXT("backend window opened via plain console %s (launcher pid %u): title \"%s\", dir %s, endpoint %s:%d, command \"%s\" run.py"),
+		*Shell, ProcessId, BackendWindowTitle, *Dir, *Host, Port, *Exe);
 }
 
 // ---------------------------------------------------------------------- //

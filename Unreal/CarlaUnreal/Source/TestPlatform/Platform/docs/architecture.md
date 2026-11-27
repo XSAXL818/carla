@@ -264,6 +264,19 @@
 
 UE 侧 C++ 负责：把 Slate 面板挂到 game viewport、按后端状态驱动预览/跟车相机、启动并轮询 Python 后端。入口是控制台命令 `TestPlatform.Panel`（0 隐藏），没有编辑器菜单项。后端自动启动由控制台变量 `TestPlatform.BackendAutoStart` 控制（默认 1；设为 0 时只连不拉）；解释器默认取 `C:/SoftWare/MiniConda/envs/chat_carla/python.exe`，不存在时退回 PATH 上的 `python.exe`，也可用命令行 `-TestPlatformPython=` 指定。拉起前先向解析出的基址发一次 `GET /health`（走 HTTP 模块线程，超时 2 s，不占游戏线程）；有应答就不重复拉起，没有应答才启动一次 `run.py`，并且发起过一次拉起后不再重复探测。
 
+自动拉起**不再是隐藏进程**，而是一个可见的 Windows Terminal 窗口（`UnrealEditor -game` 下同理）：
+
+- 标题固定为 `CARLA TestPlatform Backend`：`--suppressApplicationTitle` 让 cmd / python 改不了它，操作员照这个名字找窗口；
+- `wt.exe -w -1 nt ... -d "<backend 目录>"` 开的是**独立窗口**，不是塞进操作员已开窗口的标签页——否则“关窗口”会连别人的标签一起关掉；
+- 窗口里跑 `cmd /k "chcp 65001>nul && <python> run.py"`：`cmd /k` 让 python 退出后窗口还留着，traceback 不会跟着一起消失；
+- stdout/stderr 就是这个窗口的实时输出（面板不再持有管道），`TESTPLATFORM_HOST` / `TESTPLATFORM_PORT` 照旧在拉起前写进环境，后端仍绑面板探测的那个端点；
+- 关掉窗口 = 停掉后端：控制台一关，python 随之结束，8765 不再监听，面板下一次 `/health` 探不到就显示“配置后端未运行”（顶部服务器小条此时是 `未知`，因为探测本身没有应答，见 `STestPlatformUI::UpdateChrome` 里 未知/未连接 的区分）；
+- 手动关窗之后不会被重拉：一次性闩锁 `bBackendSpawnAttempted` 仍然只在第一次拉发起前置位，没有任何重试路径；
+- 编辑器退出**不杀**这个进程（`ShutdownModule` 不碰它，也不放 job object 里），窗口留在操作员手里。
+
+`wt.exe` 找不到、或 `FPlatformProcess::CreateProc` 失败时，退回到普通可见控制台窗口
+`cmd /c start "CARLA TestPlatform Backend" "<python>" run.py`，并用 Warning 日志说明走了哪条路径（Windows Terminal / 普通控制台）以及启动进程的 pid、工作目录、端点 —— 绝不静默退回隐藏模式。`wt.exe` 先按 `%LOCALAPPDATA%\Microsoft\WindowsApps\wt.exe`（Store 按用户安装的执行别名）找，再退回 PATH 上的 `wt.exe`；命令行开关 `-TestPlatformBackendLauncher=<path>` 覆盖这个查找（指到不存在的文件即可验证兜底路径）。日志里的 pid 是启动器（wt.exe / cmd.exe）的 pid，它很快就退出，真正的 python 在它下面：`python.exe -> cmd.exe -> WindowsTerminal.exe`。
+
 ## 10. 目录结构
 
 ```
@@ -326,7 +339,9 @@ Source/TestPlatform/
 4. **启动**：`cd Unreal/CarlaUnreal/Source/TestPlatform/Platform/backend` 后 `python run.py`
    （默认 `127.0.0.1:8765`，可用 `TESTPLATFORM_HOST` / `TESTPLATFORM_PORT` 改；UE 侧用
    `-TestPlatformBackend=` 指同一地址）。模拟器没起时 `/health` 照样返回 200，只是 `carla.connected` 为
-   `false` 并带上连接错误；配置类接口照常可用。
+   `false` 并带上连接错误；配置类接口照常可用。手动启动是可选做法：不手动启动时 UE 在探测不到后端后会
+   自己开一个可见的 Windows Terminal 窗口跑 `run.py`（见 §9），关掉那个窗口就把后端停了；手动的窗口和
+   自动的窗口是两条路，同时只该存在一个。
 
 ## 13. 已确认的边界
 
