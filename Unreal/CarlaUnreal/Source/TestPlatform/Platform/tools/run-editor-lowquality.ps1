@@ -18,12 +18,14 @@ param(
 )
 
 # Normalisation follows FTestPlatformApi::RootUrl(): trim, add http:// when the
-# scheme is missing, drop the trailing slash. It is deliberately stricter on one
-# point: RootUrl() keeps the default base when nothing usable is left (e.g.
-# "http://"), here the value fails loudly instead. The endpoint was typed by an
-# operator, so a typo must stop the launch rather than silently run against a
-# backend that was not asked for; and whatever is probed, exported to the child
-# process and passed as -TestPlatformBackend= is this one string.
+# scheme is missing, drop the trailing slash. It is deliberately stricter on two
+# points: RootUrl() keeps the default base when nothing usable is left (e.g.
+# "http://"), and it hands a value that is not a URL at all (e.g. "not a url")
+# to the HTTP layer verbatim; here both fail loudly instead - the URI check below
+# rejects anything that is not an absolute URL with a host. The endpoint was
+# typed by an operator, so a typo must stop the launch rather than silently run
+# against a backend that was not asked for; and whatever is probed, exported to
+# the child process and passed as -TestPlatformBackend= is this one string.
 function ConvertTo-BackendUrl {
     param([string]$Url)
     $text = "$Url".Trim()

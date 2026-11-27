@@ -1158,7 +1158,7 @@ void STestPlatformUI::RebuildSummary()
 			+ SVerticalBox::Slot().AutoHeight().Padding(FMargin(0.f, 8.f, 0.f, 0.f))
 			[
 				Text(LOCTEXT("SumHint",
-					"路线按 xodr 生成（road_id / lane_id / s），启动前会做一次 Waypoint 解析校验。").ToString(),
+					"路线按 xodr 生成（road_id / lane_id / s），坐标用到时才解析：首尾点解析失败会报错，中间点解析不到会跳过。").ToString(),
 					9, false, ColWarn)
 			])
 	];

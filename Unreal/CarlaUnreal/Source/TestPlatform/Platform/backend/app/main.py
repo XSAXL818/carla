@@ -11,8 +11,9 @@ Phase 1 endpoints (no simulation):
     GET /algorithms
     GET /config/schema
 
-The session lifecycle (POST /sessions, /start, /stop, metrics, websocket) lands
-next; this module already owns the paths and the app object it will register on.
+The session lifecycle (POST /sessions, /start, /stop, metrics, exports) is served
+by sessions_api.py, whose router this module includes. There is no websocket -
+progress is polled via GET /sessions/current.
 """
 from __future__ import annotations
 

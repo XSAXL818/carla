@@ -295,7 +295,7 @@ Source/TestPlatform/
 2. 缩略图生成（地图俯视、车辆 3/4 视角）与缓存
 3. 前端接后端：地图/主车/路线/天气/算法/运行 六块全部可用
 4. `POST /sessions/{id}/start`：load_world → 天气 → ego → 算法 → 交通 → recorder → tick 循环
-5. 指标与导出（HTTP 下载）
+5. 指标与导出：`metrics.csv` / `rec.log` 是 HTTP 文件下载，`summary` / `events.json` 是内联 JSON
 6. UE 侧：控制台命令入口 `TestPlatform.Panel` + 原生 Slate 面板（纯 C++，无 UMG 资源）
 7. 失败兜底：地图加载失败、生成点被占、路线不可达、算法抛异常、后端与 UE 断连
 
