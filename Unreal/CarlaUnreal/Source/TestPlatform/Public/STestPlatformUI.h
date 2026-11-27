@@ -121,6 +121,8 @@ private:
 	TSharedPtr<STextBlock> StatusText;
 	TSharedPtr<STextBlock> SessionChipText;
 	TSharedPtr<STextBlock> ServerChipText;
+	/** the square in front of ServerChipText; painted from the same /health state */
+	TSharedPtr<SBorder> ServerDot;
 	TSharedPtr<SBox> LoadingBox;
 	TSharedPtr<STextBlock> LoadingText;
 	TSharedPtr<SEditableTextBox> SearchBox;

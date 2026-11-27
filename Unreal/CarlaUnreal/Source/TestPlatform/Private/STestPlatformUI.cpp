@@ -320,7 +320,7 @@ TSharedRef<SWidget> STestPlatformUI::MakeTopBar()
 				[
 					SNew(SHorizontalBox)
 					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
-					[SNew(SBorder).BorderImage(&Brush(ColAccent)).Padding(FMargin(3.f, 3.f))]
+					[SAssignNew(ServerDot, SBorder).BorderImage(&Brush(ColDim)).Padding(FMargin(3.f, 3.f))]
 					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin(6.f, 0.f, 0.f, 0.f))
 					[
 						SAssignNew(ServerChipText, STextBlock).Text(FText::FromString(TEXT("服务器 127.0.0.1 : 2000")))
@@ -1518,6 +1518,15 @@ void STestPlatformUI::UpdateChrome()
 			: TEXT("未知"); // /health not answered yet
 		ServerChipText->SetText(FText::FromString(
 			FString::Printf(TEXT("服务器 127.0.0.1 : 2000 · %s"), *State)));
+		// The dot reads the same State string, so it cannot drift from the text:
+		// teal only when the probe says connected, grey (ColMuted) when it says
+		// not connected, dimmer grey (ColDim) while /health has not answered.
+		if (ServerDot.IsValid())
+		{
+			const FLinearColor DotColor = (State == TEXT("已连接")) ? ColAccent
+				: ((State == TEXT("未连接")) ? ColMuted : ColDim);
+			ServerDot->SetBorderImage(&Brush(DotColor));
+		}
 	}
 	if (MapChipText.IsValid())
 	{
