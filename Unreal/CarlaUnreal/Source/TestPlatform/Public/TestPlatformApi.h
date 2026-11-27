@@ -124,12 +124,34 @@ public:
 	 * the simulator closed, so IsReady() only means "the backend answered" —
 	 * this is the one signal that says whether CARLA's RPC server is actually
 	 * up. Asynchronous; poll it rather than awaiting it.
+	 *
+	 * bForce asks the backend to re-probe instead of serving its 5 s cache: an
+	 * answer produced while the simulator was blocked (a 30-90 s map load) says
+	 * nothing about CARLA now, so the first poll after such a window forces it.
 	 */
-	void LoadHealth();
+	void LoadHealth(bool bForce = false);
 	/** What the last /health answer said about carla.connected. */
 	bool IsCarlaConnected() const { return bCarlaConnected; }
 	/** False until a /health answer has been parsed (backend down or starting). */
 	bool HasCarlaState() const { return bCarlaKnown; }
+
+	/**
+	 * The CARLA RPC endpoint the backend says it is probing (/health ->
+	 * carla.host / carla.port). The UI prints this instead of assuming 2000.
+	 * False until an answer carrying both fields has been parsed.
+	 */
+	bool HasCarlaEndpoint() const { return bCarlaEndpointKnown; }
+	const FString& CarlaHost() const { return CarlaProbeHost; }
+	int32 CarlaPort() const { return CarlaProbePort; }
+
+	/**
+	 * Forget what /health last said about carla.connected (the endpoint stays
+	 * known). Called while a map load blocks the simulator: a probe that runs
+	 * then can only measure the block, so its "connected: false" must not be
+	 * shown as 未连接. Answers already in flight when this is called are
+	 * discarded instead of being applied afterwards.
+	 */
+	void InvalidateCarlaState();
 
 	bool IsReady() const { return bReady; }
 	const TArray<FMapInfo>& Maps() const { return MapsCache; }
@@ -183,6 +205,16 @@ private:
 	bool bReady = false;
 	bool bCarlaConnected = false;
 	bool bCarlaKnown = false;
+	/** carla.host / carla.port from the last /health answer that carried them */
+	bool bCarlaEndpointKnown = false;
+	FString CarlaProbeHost;
+	int32 CarlaProbePort = 0;
+	/**
+	 * Bumped by InvalidateCarlaState(). A /health answer captures it when the
+	 * request is issued and is dropped on arrival if it no longer matches, so a
+	 * probe from before the invalidation cannot resurrect a stale verdict.
+	 */
+	uint64 HealthEpoch = 0;
 };
 
 

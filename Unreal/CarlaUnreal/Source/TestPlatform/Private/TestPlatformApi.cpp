@@ -372,20 +372,28 @@ void FTestPlatformApi::LoadCatalog()
 // ---------------------------------------------------------------------- //
 // health: is CARLA actually up?
 // ---------------------------------------------------------------------- //
-void FTestPlatformApi::LoadHealth()
+void FTestPlatformApi::LoadHealth(bool bForce)
 {
 	TWeakPtr<FTestPlatformApi> Weak = AsShared();
+	// A request issued before InvalidateCarlaState() belongs to a window in which
+	// the probe could not tell anything (blocked simulator); drop it on arrival.
+	const uint64 Epoch = HealthEpoch;
 
-	GetJson(TEXT("/health"), [Weak](bool bOk, const TSharedPtr<FJsonObject>& Root)
+	GetJson(bForce ? TEXT("/health?force=true") : TEXT("/health"),
+		[Weak, Epoch](bool bOk, const TSharedPtr<FJsonObject>& Root)
 	{
 		TSharedPtr<FTestPlatformApi> This = Weak.Pin();
 		if (!This.IsValid())
 		{
 			return;
 		}
-		// /health carries {"carla": {"connected": bool, ...}}. Without that
-		// block the state stays unknown: a backend that answers with the
-		// simulator closed must not be reported as a live CARLA connection.
+		if (Epoch != This->HealthEpoch)
+		{
+			return;
+		}
+		// /health carries {"carla": {"connected": bool, "host": ..., "port": ...}}.
+		// Without that block the state stays unknown: a backend that answers with
+		// the simulator closed must not be reported as a live CARLA connection.
 		bool bConnected = false;
 		const TSharedPtr<FJsonObject>* Carla = nullptr;
 		if (bOk && Root.IsValid())
@@ -394,7 +402,32 @@ void FTestPlatformApi::LoadHealth()
 		}
 		This->bCarlaKnown = Carla && (*Carla)->TryGetBoolField(TEXT("connected"), bConnected);
 		This->bCarlaConnected = This->bCarlaKnown && bConnected;
+
+		// The same block names the endpoint the backend really probes
+		// (CARLA_HOST / CARLA_PORT). The top bar prints this, not a constant:
+		// the state is measured there, so the address must be the same one.
+		if (Carla && Carla->IsValid())
+		{
+			FString Host;
+			double Port = 0.0;
+			if ((*Carla)->TryGetStringField(TEXT("host"), Host) && !Host.IsEmpty() &&
+				(*Carla)->TryGetNumberField(TEXT("port"), Port) && Port > 0.0 &&
+				Port <= 65535.0)
+			{
+				This->CarlaProbeHost = Host;
+				This->CarlaProbePort = static_cast<int32>(Port);
+				This->bCarlaEndpointKnown = true;
+			}
+		}
 	});
+}
+
+void FTestPlatformApi::InvalidateCarlaState()
+{
+	// Bumping the epoch also drops answers already in flight (see LoadHealth).
+	++HealthEpoch;
+	bCarlaKnown = false;
+	bCarlaConnected = false;
 }
 
 void FTestPlatformApi::SelectMap(const FString& MapId)

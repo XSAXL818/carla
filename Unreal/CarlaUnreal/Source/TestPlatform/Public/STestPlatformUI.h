@@ -44,6 +44,14 @@ public:
 	void SetUIVisible(bool bVisible);
 	bool IsUIVisible() const { return bUIVisible; }
 	void SetSessionStatus(const FSessionStatus& Status);
+	/**
+	 * Is a map load in flight according to the backend? GET /sessions/current
+	 * reports state=preview_loading for the whole 30-90 s a load_world blocks the
+	 * simulator, which is the window in which GET /health cannot answer honestly.
+	 * The backend sets it, so a real answer clears it; a missed poll leaves it
+	 * alone (the chip falls back to 未知 while /health is silent anyway).
+	 */
+	void SetSessionLoadInFlight(bool bInFlight);
 	void ReloadCatalog();
 	bool IsBackendReady() const;
 	bool IsLoadingMap() const { return bLoadingMap; }
@@ -89,6 +97,15 @@ private:
 	void RebuildSummary();
 	void UpdateChrome();
 	EActiveTimerReturnType TickRefresh(double Time, float DeltaTime);
+
+	/** True while a load_world is in flight: the /health probe cannot tell then. */
+	bool IsCarlaProbeBlocked() const { return bLoadingMap || bSessionLoadInFlight; }
+	/**
+	 * Keep the probe window and the chip in step when it opens or closes: on
+	 * open, drop the last /health verdict; on close, ask again immediately (and
+	 * force a re-probe), instead of leaving whatever the blocked window produced.
+	 */
+	void SyncCarlaProbeWindow();
 
 	// ---- behaviour
 	void OnSelectMap(const FString& MapId);
@@ -150,6 +167,16 @@ private:
 	/** last chrome state pushed to the top bar: CARLA's connection is live */
 	bool bLastCarlaConnected = false;
 	bool bLastCarlaKnown = false;
+	/** last endpoint printed in the chip, so a moved backend still repaints */
+	bool bLastCarlaEndpointKnown = false;
+	int32 LastCarlaPort = 0;
+	/**
+	 * The backend says a map load is in flight (preview_loading). Together with
+	 * bLoadingMap it closes the window in which /health cannot be believed.
+	 */
+	bool bSessionLoadInFlight = false;
+	/** value of IsCarlaProbeBlocked() the chip was last painted with */
+	bool bProbeBlocked = false;
 	/** seconds since the last GET /health poll (see TickRefresh) */
 	double LastHealthPollAt = 0.0;
 	bool bWarnStatus = false;

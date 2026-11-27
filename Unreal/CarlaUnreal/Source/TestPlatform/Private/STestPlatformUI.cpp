@@ -323,7 +323,9 @@ TSharedRef<SWidget> STestPlatformUI::MakeTopBar()
 					[SAssignNew(ServerDot, SBorder).BorderImage(&Brush(ColDim)).Padding(FMargin(3.f, 3.f))]
 					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin(6.f, 0.f, 0.f, 0.f))
 					[
-						SAssignNew(ServerChipText, STextBlock).Text(FText::FromString(TEXT("服务器 127.0.0.1 : 2000")))
+						// no address is known before the first /health answer, and
+						// inventing one would be a lie the state no longer covers
+						SAssignNew(ServerChipText, STextBlock).Text(FText::FromString(TEXT("服务器 — · 未知")))
 						.Font(F(10)).ColorAndOpacity(FSlateColor(ColMuted))
 					]
 				]
@@ -1312,6 +1314,7 @@ void STestPlatformUI::LoadSelectedMap(TFunction<void(bool)> Done)
 	bLoadingMap = true;
 	LoadStartedAt = FPlatformTime::Seconds();
 	bBusy = true;
+	SyncCarlaProbeWindow();
 	if (LoadingBox.IsValid())
 	{
 		LoadingBox->SetVisibility(EVisibility::Visible);
@@ -1327,6 +1330,7 @@ void STestPlatformUI::LoadSelectedMap(TFunction<void(bool)> Done)
 	{
 		bLoadingMap = false;
 		bBusy = false;
+		SyncCarlaProbeWindow();
 		if (LoadingBox.IsValid())
 		{
 			LoadingBox->SetVisibility(EVisibility::Collapsed);
@@ -1463,6 +1467,11 @@ void STestPlatformUI::SetUIVisible(bool bVisible)
 
 void STestPlatformUI::SetSessionStatus(const FSessionStatus& Status)
 {
+	// Whether a load is in flight is a fact the top bar needs even when the rest
+	// of the session status is suppressed below: /health cannot answer honestly
+	// during it (see UpdateChrome). /sessions/current is where the backend says
+	// it, so read it before the early return.
+	SetSessionLoadInFlight(Status.bValid && Status.State == TEXT("preview_loading"));
 	if (bBusy || bLoadingMap)
 	{
 		return;
@@ -1476,6 +1485,45 @@ void STestPlatformUI::SetSessionStatus(const FSessionStatus& Status)
 	{
 		SetStatus(FString::Printf(TEXT("运行中 · %.1f km/h · %.1f s · %d 事件"),
 			Status.SpeedKmh, Status.SimTime, Status.Events));
+	}
+	UpdateChrome();
+}
+
+void STestPlatformUI::SetSessionLoadInFlight(bool bInFlight)
+{
+	const bool bChanged = bSessionLoadInFlight != bInFlight;
+	bSessionLoadInFlight = bInFlight;
+	if (bChanged)
+	{
+		SyncCarlaProbeWindow();
+	}
+}
+
+void STestPlatformUI::SyncCarlaProbeWindow()
+{
+	const bool bBlocked = IsCarlaProbeBlocked();
+	if (bBlocked == bProbeBlocked)
+	{
+		return;
+	}
+	bProbeBlocked = bBlocked;
+	if (!Api.IsValid())
+	{
+		return;
+	}
+	if (bBlocked)
+	{
+		// A probe issued now would only measure the blocked simulator, and an
+		// answer already in flight was measured in the same window: drop both.
+		Api->InvalidateCarlaState();
+	}
+	else
+	{
+		// The load is over: ask now rather than waiting up to 5 s for the next
+		// poll, and force=true so the backend does not hand back the verdict it
+		// cached while the world was loading.
+		LastHealthPollAt = FPlatformTime::Seconds();
+		Api->LoadHealth(/*bForce=*/true);
 	}
 	UpdateChrome();
 }
@@ -1509,18 +1557,37 @@ void STestPlatformUI::UpdateChrome()
 	}
 	if (ServerChipText.IsValid())
 	{
-		// The address in this chip is CARLA's RPC endpoint, so the state after
-		// the dot has to come from the CARLA probe (/health -> carla.connected).
-		// "the backend answered" is not the same thing: the backend serves the
-		// catalog with the simulator closed and still reports connected=false.
-		const FString State = (Api.IsValid() && Api->HasCarlaState())
-			? (Api->IsCarlaConnected() ? TEXT("已连接") : TEXT("未连接"))
-			: TEXT("未知"); // /health not answered yet
+		// The address in this chip is CARLA's RPC endpoint, so it has to be the
+		// endpoint the backend is really probing — GET /health reports it under
+		// carla.host / carla.port (CARLA_HOST / CARLA_PORT in the backend). A
+		// constant here prints a lie as soon as the backend is pointed elsewhere.
+		// Until an answer carrying it has been parsed there is nothing honest to
+		// print, so the address is a dash rather than an invented default.
+		const FString Address = (Api.IsValid() && Api->HasCarlaEndpoint())
+			? FString::Printf(TEXT("%s : %d"), *Api->CarlaHost(), Api->CarlaPort())
+			: FString(TEXT("—"));
+		// The state after the dot comes from the same probe (/health ->
+		// carla.connected). "the backend answered" is not the same thing: the
+		// backend serves the catalog with the simulator closed and still reports
+		// connected=false.
+		//
+		// A failed probe is only evidence of "not connected" when CARLA had a
+		// chance to answer. During a blocking load_world (30-90 s on the HD
+		// maps) the probe's 1 s timeout always expires, so that window is its
+		// own case: "could not tell" (未知), never 未连接. A probe that *succeeds*
+		// during it is still displayed as 已连接 — that answer is positive
+		// evidence, so there is no reason to hide it.
+		const bool bBlocked = IsCarlaProbeBlocked();
+		const bool bKnown = Api.IsValid() && Api->HasCarlaState();
+		const bool bConnected = bKnown && Api->IsCarlaConnected();
+		const FString State = bConnected
+			? FString(TEXT("已连接"))
+			: ((bKnown && !bBlocked) ? FString(TEXT("未连接")) : FString(TEXT("未知")));
 		ServerChipText->SetText(FText::FromString(
-			FString::Printf(TEXT("服务器 127.0.0.1 : 2000 · %s"), *State)));
+			FString::Printf(TEXT("服务器 %s · %s"), *Address, *State)));
 		// The dot reads the same State string, so it cannot drift from the text:
 		// teal only when the probe says connected, grey (ColMuted) when it says
-		// not connected, dimmer grey (ColDim) while /health has not answered.
+		// not connected, dimmer grey (ColDim) while nothing can be decided.
 		if (ServerDot.IsValid())
 		{
 			const FLinearColor DotColor = (State == TEXT("已连接")) ? ColAccent
@@ -1675,18 +1742,27 @@ EActiveTimerReturnType STestPlatformUI::TickRefresh(double Time, float DeltaTime
 	// CARLA's connection is live state, not a launch-time fact: /health
 	// re-probes it (the backend caches the answer for 5 s), so keep polling
 	// while the panel is up instead of freezing whatever was true at startup.
-	if (FPlatformTime::Seconds() - LastHealthPollAt >= 5.0)
+	// Not while a load is in flight though: the probe would only measure the
+	// block (see UpdateChrome / SyncCarlaProbeWindow).
+	SyncCarlaProbeWindow();
+	if (!IsCarlaProbeBlocked() && FPlatformTime::Seconds() - LastHealthPollAt >= 5.0)
 	{
 		LastHealthPollAt = FPlatformTime::Seconds();
 		Api->LoadHealth();
 	}
+	const bool bEndpointKnown = Api->HasCarlaEndpoint();
+	const int32 Port = bEndpointKnown ? Api->CarlaPort() : 0;
 	if (bReady != bLastBackendReady ||
 		Api->IsCarlaConnected() != bLastCarlaConnected ||
-		Api->HasCarlaState() != bLastCarlaKnown)
+		Api->HasCarlaState() != bLastCarlaKnown ||
+		bEndpointKnown != bLastCarlaEndpointKnown ||
+		Port != LastCarlaPort)
 	{
 		bLastBackendReady = bReady;
 		bLastCarlaConnected = Api->IsCarlaConnected();
 		bLastCarlaKnown = Api->HasCarlaState();
+		bLastCarlaEndpointKnown = bEndpointKnown;
+		LastCarlaPort = Port;
 		UpdateChrome();
 	}
 	return EActiveTimerReturnType::Continue;

@@ -562,6 +562,10 @@ void FTestPlatformModule::OnSessionStateResponse(
 	bPollInFlight = false;
 	if (!bConnectedSuccessfully || !Response.IsValid() || Response->GetResponseCode() != 200)
 	{
+		// Deliberately keep the UI's in-flight flag as it is: a missed poll (the
+		// panel itself is frozen during a map load) is not evidence that the load
+		// ended. It clears on the next real answer, or the chip falls back to
+		// 未知 on its own because /health stops answering as well.
 		return;
 	}
 	TSharedPtr<FJsonObject> Root;
