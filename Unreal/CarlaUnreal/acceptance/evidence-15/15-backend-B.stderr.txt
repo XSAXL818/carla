@@ -1,0 +1,13 @@
+INFO:     Started server process [46968]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8765 (Press CTRL+C to quit)
+WARNING: Version mismatch detected: You are trying to connect to a simulator that might be incompatible with this API 
+WARNING: Client API version     = 1.0 
+WARNING: Simulator API version  = 1.0-3508a7ac4-dirty 
+WARNING: Version mismatch detected: You are trying to connect to a simulator that might be incompatible with this API 
+WARNING: Client API version     = 1.0 
+WARNING: Simulator API version  = 1.0-3508a7ac4-dirty 
+ERROR: unable to parse the OpenDRIVE XML string 
+ERROR: unable to parse the OpenDRIVE XML string 
+WARNING: synchronous mode and substepping are enabled but the values for the simulation are not valid. The values should fulfil fixed_delta_seconds <= max_substep_delta_time * max_substeps. Be very careful about that, the time deltas are not guaranteed. 

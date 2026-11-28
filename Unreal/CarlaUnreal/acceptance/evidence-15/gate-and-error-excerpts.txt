@@ -1,0 +1,151 @@
+===== run A : Saved\Logs\CarlaUnreal.log (extract) =====
+LogInit: Command Line: -windowed -ResX=1280 -ResY=720 -nosound -nologtimes -TestPlatformBackend=http://127.0.0.1:8765 -ExecCmds="sg.ViewDistanceQuality 0,sg.ShadowQuality 0,sg.PostProcessQuality 0,sg.TextureQuality 0,sg.EffectsQuality 0,sg.FoliageQuality 0,sg.ShadingQuality 0,sg.AntiAliasingQuality 0,r.DynamicGlobalIlluminationMethod 0,r.ReflectionMethod 0,r.Shadow.Virtual.Enable 0,r.AntiAliasingMethod 0,r.SSR.Quality 0,r.AmbientOcclusionLevels 0,r.BloomQuality 0,r.MotionBlurQuality 0,r.DepthOfFieldQuality 0,t.MaxFPS 30,r.ScreenPercentage 60,TestPlatform.BackendAutoStart 0" -game
+LogTestPlatform: CARLA test platform runtime module started
+LogTestPlatform: panel gate: entry maps [/Game/TestPlatform/Maps/L_TestPlatformEntry]
+LogWorld: Bringing World /Game/TestPlatform/Maps/L_TestPlatformEntry.L_TestPlatformEntry up for play (max tick rate 0) at 2026.11.28-07.04.30
+LogCarla: Warning: Additional file not found: C:/GameProject/CarlaUE5/carla/Unreal/CarlaUnreal/Content/Carla/Config/L_TestPlatformEntry/Vehicles.json
+LogCarla: Error: No OpenDrive file found for map 'L_TestPlatformEntry'
+LogCarla: Error: Invalid Map
+LogTestPlatform: map /Game/TestPlatform/Maps/L_TestPlatformEntry: config panel enabled (entry map)
+LogTestPlatform: test platform UI added to the game viewport
+LogTestPlatform: spawned runtime preview camera
+LogCarla: Error: No OpenDrive file found for map 'L_TestPlatformEntry'
+LogWorld: Bringing World /Game/Carla/Maps/Town10HD_Opt.Town10HD_Opt up for play (max tick rate 30) at 2026.11.28-07.05.58
+LogCarla: Warning: Additional file not found: C:/GameProject/CarlaUE5/carla/Unreal/CarlaUnreal/Content/Carla/Config/Town10HD_Opt/Vehicles.json
+LogCarla: Error: Actor Name: Actor_29 Actor Labe: PB_HotelBase_02 has no SM assigned to the ISM
+LogCarla: Error: Actor Name: Actor_30 Actor Labe: PB_Hotel_02 has no SM assigned to the ISM
+LogTestPlatform: map /Game/Carla/Maps/Town10HD_Opt: config panel enabled (this run started on an entry map)
+LogTestPlatform: spawned runtime preview camera
+
+===== run B : Saved\Logs\CarlaUnreal.log (extract) =====
+LogInit: Command Line: -windowed -ResX=1280 -ResY=720 -nosound -nologtimes -TestPlatformBackend=http://127.0.0.1:8765 -ExecCmds="sg.ViewDistanceQuality 0,sg.ShadowQuality 0,sg.PostProcessQuality 0,sg.TextureQuality 0,sg.EffectsQuality 0,sg.FoliageQuality 0,sg.ShadingQuality 0,sg.AntiAliasingQuality 0,r.DynamicGlobalIlluminationMethod 0,r.ReflectionMethod 0,r.Shadow.Virtual.Enable 0,r.AntiAliasingMethod 0,r.SSR.Quality 0,r.AmbientOcclusionLevels 0,r.BloomQuality 0,r.MotionBlurQuality 0,r.DepthOfFieldQuality 0,t.MaxFPS 30,r.ScreenPercentage 60" -game
+LogTestPlatform: CARLA test platform runtime module started
+LogTestPlatform: panel gate: entry maps [/Game/TestPlatform/Maps/L_TestPlatformEntry]
+LogWorld: Bringing World /Game/TestPlatform/Maps/L_TestPlatformEntry.L_TestPlatformEntry up for play (max tick rate 0) at 2026.11.28-07.07.31
+LogCarla: Warning: Additional file not found: C:/GameProject/CarlaUE5/carla/Unreal/CarlaUnreal/Content/Carla/Config/L_TestPlatformEntry/Vehicles.json
+LogCarla: Error: No OpenDrive file found for map 'L_TestPlatformEntry'
+LogCarla: Error: Invalid Map
+LogTestPlatform: map /Game/TestPlatform/Maps/L_TestPlatformEntry: config panel enabled (entry map)
+LogTestPlatform: test platform UI added to the game viewport
+LogTestPlatform: spawned runtime preview camera
+LogTestPlatformUI: backend health answered: reachable 0.7 s after panel construction
+LogTestPlatformUI: backend adopted: catalog ready with 9 maps, 0.7 s after panel construction
+LogCarla: Error: No OpenDrive file found for map 'L_TestPlatformEntry'
+LogCarla: Error: No OpenDrive file found for map 'L_TestPlatformEntry'
+LogWorld: Bringing World /Game/Carla/Maps/Town10HD_Opt.Town10HD_Opt up for play (max tick rate 30) at 2026.11.28-07.08.22
+LogCarla: Warning: Additional file not found: C:/GameProject/CarlaUE5/carla/Unreal/CarlaUnreal/Content/Carla/Config/Town10HD_Opt/Vehicles.json
+LogCarla: Error: Actor Name: Actor_29 Actor Labe: PB_HotelBase_02 has no SM assigned to the ISM
+LogCarla: Error: Actor Name: Actor_30 Actor Labe: PB_Hotel_02 has no SM assigned to the ISM
+LogTestPlatform: map /Game/Carla/Maps/Town10HD_Opt: config panel enabled (this run started on an entry map)
+LogTestPlatform: spawned runtime preview camera
+
+===== run C : Saved\Logs\CarlaUnreal.log (extract) =====
+LogInit: Command Line: -windowed -ResX=1280 -ResY=720 -nosound -nologtimes -TestPlatformBackend=http://127.0.0.1:8765 /Game/Carla/Maps/Town05_Opt -ExecCmds="sg.ViewDistanceQuality 0,sg.ShadowQuality 0,sg.PostProcessQuality 0,sg.TextureQuality 0,sg.EffectsQuality 0,sg.FoliageQuality 0,sg.ShadingQuality 0,sg.AntiAliasingQuality 0,r.DynamicGlobalIlluminationMethod 0,r.ReflectionMethod 0,r.Shadow.Virtual.Enable 0,r.AntiAliasingMethod 0,r.SSR.Quality 0,r.AmbientOcclusionLevels 0,r.BloomQuality 0,r.MotionBlurQuality 0,r.DepthOfFieldQuality 0,t.MaxFPS 30,r.ScreenPercentage 60,TestPlatform.BackendAutoStart 0" -game
+LogTestPlatform: CARLA test platform runtime module started
+LogTestPlatform: panel gate: entry maps [/Game/TestPlatform/Maps/L_TestPlatformEntry]
+LogWorld: Bringing World /Game/Carla/Maps/Town05_Opt.Town05_Opt up for play (max tick rate 0) at 2026.11.28-07.09.31
+LogCarla: Warning: Additional file not found: C:/GameProject/CarlaUE5/carla/Unreal/CarlaUnreal/Content/Carla/Config/Town05_Opt/Vehicles.json
+LogCarla: Error: Actor Name: InstancedFoliageActor_1 Actor Labe: InstancedFoliageActor1 has no SM assigned to the ISM
+LogCarla: Error: Actor Name: InstancedFoliageActor_0 Actor Labe: InstancedFoliageActor has no SM assigned to the ISM
+LogTestPlatform: map /Game/Carla/Maps/Town05_Opt: config panel disabled (not an entry map)
+LogTestPlatform: test platform UI added to the game viewport
+LogTestPlatform: test platform UI shown by request on map /Game/Carla/Maps/Town05_Opt (manual override of the entry-map gate)
+LogTestPlatform: map /Game/Carla/Maps/Town05_Opt: config panel enabled (TestPlatform.Panel)
+LogTestPlatform: spawned runtime preview camera
+LogTestPlatform: map /Game/Carla/Maps/Town05_Opt: config panel disabled (not an entry map)
+LogTestPlatform: test platform UI removed from the game viewport
+
+===== run D : Saved\Logs\CarlaUnreal.log (extract) =====
+LogInit: Command Line: -windowed -ResX=1280 -ResY=720 -nosound -nologtimes -TestPlatformBackend=http://127.0.0.1:8765 /Game/Carla/Maps/Town05_Opt -TestPlatformForceUI -ExecCmds="sg.ViewDistanceQuality 0,sg.ShadowQuality 0,sg.PostProcessQuality 0,sg.TextureQuality 0,sg.EffectsQuality 0,sg.FoliageQuality 0,sg.ShadingQuality 0,sg.AntiAliasingQuality 0,r.DynamicGlobalIlluminationMethod 0,r.ReflectionMethod 0,r.Shadow.Virtual.Enable 0,r.AntiAliasingMethod 0,r.SSR.Quality 0,r.AmbientOcclusionLevels 0,r.BloomQuality 0,r.MotionBlurQuality 0,r.DepthOfFieldQuality 0,t.MaxFPS 30,r.ScreenPercentage 60" -game
+LogTestPlatform: CARLA test platform runtime module started
+LogTestPlatform: panel gate: entry maps [/Game/TestPlatform/Maps/L_TestPlatformEntry], forced on by -TestPlatformForceUI
+LogWorld: Bringing World /Game/Carla/Maps/Town05_Opt.Town05_Opt up for play (max tick rate 0) at 2026.11.28-07.12.09
+LogCarla: Warning: Additional file not found: C:/GameProject/CarlaUE5/carla/Unreal/CarlaUnreal/Content/Carla/Config/Town05_Opt/Vehicles.json
+LogCarla: Error: Actor Name: InstancedFoliageActor_1 Actor Labe: InstancedFoliageActor1 has no SM assigned to the ISM
+LogCarla: Error: Actor Name: InstancedFoliageActor_0 Actor Labe: InstancedFoliageActor has no SM assigned to the ISM
+LogTestPlatform: map /Game/Carla/Maps/Town05_Opt: config panel enabled (-TestPlatformForceUI)
+LogTestPlatform: test platform UI added to the game viewport
+LogTestPlatform: spawned runtime preview camera
+LogTestPlatformUI: backend health answered: reachable 1.7 s after panel construction
+LogTestPlatformUI: backend adopted: catalog ready with 9 maps, 1.7 s after panel construction
+LogWorld: Bringing World /Game/Carla/Maps/Town10HD_Opt.Town10HD_Opt up for play (max tick rate 30) at 2026.11.28-07.13.01
+LogCarla: Warning: Additional file not found: C:/GameProject/CarlaUE5/carla/Unreal/CarlaUnreal/Content/Carla/Config/Town10HD_Opt/Vehicles.json
+LogCarla: Error: Actor Name: Actor_29 Actor Labe: PB_HotelBase_02 has no SM assigned to the ISM
+LogCarla: Error: Actor Name: Actor_30 Actor Labe: PB_Hotel_02 has no SM assigned to the ISM
+LogTestPlatform: map /Game/Carla/Maps/Town10HD_Opt: config panel enabled (-TestPlatformForceUI)
+LogTestPlatform: spawned runtime preview camera
+
+===== run E : Saved\Logs\CarlaUnreal.log (extract) =====
+LogInit: Command Line: -windowed -ResX=1280 -ResY=720 -nosound -nologtimes -TestPlatformBackend=http://127.0.0.1:8765 /Game/Carla/Maps/Town05_Opt -ExecCmds="sg.ViewDistanceQuality 0,sg.ShadowQuality 0,sg.PostProcessQuality 0,sg.TextureQuality 0,sg.EffectsQuality 0,sg.FoliageQuality 0,sg.ShadingQuality 0,sg.AntiAliasingQuality 0,r.DynamicGlobalIlluminationMethod 0,r.ReflectionMethod 0,r.Shadow.Virtual.Enable 0,r.AntiAliasingMethod 0,r.SSR.Quality 0,r.AmbientOcclusionLevels 0,r.BloomQuality 0,r.MotionBlurQuality 0,r.DepthOfFieldQuality 0,t.MaxFPS 30,r.ScreenPercentage 60,TestPlatform.BackendAutoStart 0" -game
+LogTestPlatform: CARLA test platform runtime module started
+LogTestPlatform: panel gate: entry maps [/Game/TestPlatform/Maps/L_TestPlatformEntry]
+LogWorld: Bringing World /Game/Carla/Maps/Town05_Opt.Town05_Opt up for play (max tick rate 0) at 2026.11.28-07.14.45
+LogCarla: Warning: Additional file not found: C:/GameProject/CarlaUE5/carla/Unreal/CarlaUnreal/Content/Carla/Config/Town05_Opt/Vehicles.json
+LogCarla: Error: Actor Name: InstancedFoliageActor_1 Actor Labe: InstancedFoliageActor1 has no SM assigned to the ISM
+LogCarla: Error: Actor Name: InstancedFoliageActor_0 Actor Labe: InstancedFoliageActor has no SM assigned to the ISM
+LogTestPlatform: map /Game/Carla/Maps/Town05_Opt: config panel disabled (not an entry map)
+
+===== run F : Saved\Logs\CarlaUnreal.log (extract) =====
+LogInit: Command Line: -windowed -ResX=1280 -ResY=720 -nosound -nologtimes -TestPlatformBackend=http://127.0.0.1:8765 /Game/Carla/Maps/Town05_Opt -ExecCmds="sg.ViewDistanceQuality 0,sg.ShadowQuality 0,sg.PostProcessQuality 0,sg.TextureQuality 0,sg.EffectsQuality 0,sg.FoliageQuality 0,sg.ShadingQuality 0,sg.AntiAliasingQuality 0,r.DynamicGlobalIlluminationMethod 0,r.ReflectionMethod 0,r.Shadow.Virtual.Enable 0,r.AntiAliasingMethod 0,r.SSR.Quality 0,r.AmbientOcclusionLevels 0,r.BloomQuality 0,r.MotionBlurQuality 0,r.DepthOfFieldQuality 0,t.MaxFPS 30,r.ScreenPercentage 60,TestPlatform.BackendAutoStart 0" -game
+LogTestPlatform: CARLA test platform runtime module started
+LogTestPlatform: panel gate: entry maps [/Game/TestPlatform/Maps/L_TestPlatformEntry]
+LogWorld: Bringing World /Game/Carla/Maps/Town05_Opt.Town05_Opt up for play (max tick rate 0) at 2026.11.28-07.15.55
+LogCarla: Warning: Additional file not found: C:/GameProject/CarlaUE5/carla/Unreal/CarlaUnreal/Content/Carla/Config/Town05_Opt/Vehicles.json
+LogCarla: Error: Actor Name: InstancedFoliageActor_1 Actor Labe: InstancedFoliageActor1 has no SM assigned to the ISM
+LogCarla: Error: Actor Name: InstancedFoliageActor_0 Actor Labe: InstancedFoliageActor has no SM assigned to the ISM
+LogTestPlatform: map /Game/Carla/Maps/Town05_Opt: config panel disabled (not an entry map)
+
+===== run G : Saved\Logs\CarlaUnreal.log (extract) =====
+LogInit: Command Line: -windowed -ResX=1280 -ResY=720 -nosound -nologtimes -TestPlatformBackend=http://127.0.0.1:8765 /Game/Carla/Maps/Town05_Opt -ini:Game:[/Script/TestPlatform.TestPlatformSettings]:+EntryMaps=/Game/Carla/Maps/Town05_Opt -ExecCmds="t.MaxFPS 30,r.ScreenPercentage 60,TestPlatform.BackendAutoStart 0" -game
+LogTestPlatform: CARLA test platform runtime module started
+LogTestPlatform: panel gate: entry maps [/Game/TestPlatform/Maps/L_TestPlatformEntry, /Game/Carla/Maps/Town05_Opt]
+LogWorld: Bringing World /Game/Carla/Maps/Town05_Opt.Town05_Opt up for play (max tick rate 0) at 2026.11.28-07.19.18
+LogCarla: Warning: Additional file not found: C:/GameProject/CarlaUE5/carla/Unreal/CarlaUnreal/Content/Carla/Config/Town05_Opt/Vehicles.json
+LogCarla: Error: Actor Name: InstancedFoliageActor_1 Actor Labe: InstancedFoliageActor1 has no SM assigned to the ISM
+LogCarla: Error: Actor Name: InstancedFoliageActor_0 Actor Labe: InstancedFoliageActor has no SM assigned to the ISM
+LogTestPlatform: map /Game/Carla/Maps/Town05_Opt: config panel enabled (entry map)
+LogTestPlatform: test platform UI added to the game viewport
+LogTestPlatform: spawned runtime preview camera
+
+===== run H : Saved\Logs\CarlaUnreal.log (extract) =====
+LogInit: Command Line: -windowed -ResX=1280 -ResY=720 -nosound -nologtimes -TestPlatformBackend=http://127.0.0.1:8765 /Game/Carla/Maps/Town05_Opt -ExecCmds="sg.ViewDistanceQuality 0,sg.ShadowQuality 0,sg.PostProcessQuality 0,sg.TextureQuality 0,sg.EffectsQuality 0,sg.FoliageQuality 0,sg.ShadingQuality 0,sg.AntiAliasingQuality 0,r.DynamicGlobalIlluminationMethod 0,r.ReflectionMethod 0,r.Shadow.Virtual.Enable 0,r.AntiAliasingMethod 0,r.SSR.Quality 0,r.AmbientOcclusionLevels 0,r.BloomQuality 0,r.MotionBlurQuality 0,r.DepthOfFieldQuality 0,t.MaxFPS 30,r.ScreenPercentage 60,TestPlatform.BackendAutoStart 0" -game
+LogTestPlatform: CARLA test platform runtime module started
+LogTestPlatform: panel gate: entry maps [/Game/TestPlatform/Maps/L_TestPlatformEntry]
+LogWorld: Bringing World /Game/Carla/Maps/Town05_Opt.Town05_Opt up for play (max tick rate 0) at 2026.11.28-07.21.01
+LogCarla: Warning: Additional file not found: C:/GameProject/CarlaUE5/carla/Unreal/CarlaUnreal/Content/Carla/Config/Town05_Opt/Vehicles.json
+LogCarla: Error: Actor Name: InstancedFoliageActor_1 Actor Labe: InstancedFoliageActor1 has no SM assigned to the ISM
+LogCarla: Error: Actor Name: InstancedFoliageActor_0 Actor Labe: InstancedFoliageActor has no SM assigned to the ISM
+LogTestPlatform: map /Game/Carla/Maps/Town05_Opt: config panel disabled (not an entry map)
+LogWorld: Bringing World /Game/TestPlatform/Maps/L_TestPlatformEntry.L_TestPlatformEntry up for play (max tick rate 30) at 2026.11.28-07.21.37
+LogCarla: Warning: Additional file not found: C:/GameProject/CarlaUE5/carla/Unreal/CarlaUnreal/Content/Carla/Config/L_TestPlatformEntry/Vehicles.json
+LogCarla: Error: No OpenDrive file found for map 'L_TestPlatformEntry'
+LogCarla: Error: Invalid Map
+LogTestPlatform: map /Game/TestPlatform/Maps/L_TestPlatformEntry: config panel enabled (entry map)
+LogTestPlatform: test platform UI added to the game viewport
+LogTestPlatform: spawned runtime preview camera
+LogCarla: Error: No OpenDrive file found for map 'L_TestPlatformEntry'
+
+===== run I : Saved\Logs\CarlaUnreal.log (extract) =====
+LogInit: Command Line: -windowed -ResX=1280 -ResY=720 -nosound -nologtimes -TestPlatformBackend=http://127.0.0.1:8765 /Game/Carla/Maps/Town05_Opt -ExecCmds="sg.ViewDistanceQuality 0,sg.ShadowQuality 0,sg.PostProcessQuality 0,sg.TextureQuality 0,sg.EffectsQuality 0,sg.FoliageQuality 0,sg.ShadingQuality 0,sg.AntiAliasingQuality 0,r.DynamicGlobalIlluminationMethod 0,r.ReflectionMethod 0,r.Shadow.Virtual.Enable 0,r.AntiAliasingMethod 0,r.SSR.Quality 0,r.AmbientOcclusionLevels 0,r.BloomQuality 0,r.MotionBlurQuality 0,r.DepthOfFieldQuality 0,t.MaxFPS 30,r.ScreenPercentage 60,TestPlatform.BackendAutoStart 0" -game
+LogTestPlatform: CARLA test platform runtime module started
+LogTestPlatform: panel gate: entry maps [/Game/TestPlatform/Maps/L_TestPlatformEntry]
+LogWorld: Bringing World /Game/Carla/Maps/Town05_Opt.Town05_Opt up for play (max tick rate 0) at 2026.11.28-07.23.40
+LogCarla: Warning: Additional file not found: C:/GameProject/CarlaUE5/carla/Unreal/CarlaUnreal/Content/Carla/Config/Town05_Opt/Vehicles.json
+LogCarla: Error: Actor Name: InstancedFoliageActor_1 Actor Labe: InstancedFoliageActor1 has no SM assigned to the ISM
+LogCarla: Error: Actor Name: InstancedFoliageActor_0 Actor Labe: InstancedFoliageActor has no SM assigned to the ISM
+LogTestPlatform: map /Game/Carla/Maps/Town05_Opt: config panel disabled (not an entry map)
+LogWorld: Bringing World /Game/TestPlatform/Maps/L_TestPlatformEntry.L_TestPlatformEntry up for play (max tick rate 30) at 2026.11.28-07.24.10
+LogCarla: Warning: Additional file not found: C:/GameProject/CarlaUE5/carla/Unreal/CarlaUnreal/Content/Carla/Config/L_TestPlatformEntry/Vehicles.json
+LogCarla: Error: No OpenDrive file found for map 'L_TestPlatformEntry'
+LogCarla: Error: Invalid Map
+LogTestPlatform: map /Game/TestPlatform/Maps/L_TestPlatformEntry: config panel enabled (entry map)
+LogTestPlatform: test platform UI added to the game viewport
+LogTestPlatform: spawned runtime preview camera
+LogCarla: Error: No OpenDrive file found for map 'L_TestPlatformEntry'
+LogWorld: Bringing World /Game/Carla/Maps/Town10HD_Opt.Town10HD_Opt up for play (max tick rate 30) at 2026.11.28-07.24.52
+LogCarla: Warning: Additional file not found: C:/GameProject/CarlaUE5/carla/Unreal/CarlaUnreal/Content/Carla/Config/Town10HD_Opt/Vehicles.json
+LogCarla: Error: Actor Name: Actor_29 Actor Labe: PB_HotelBase_02 has no SM assigned to the ISM
+LogCarla: Error: Actor Name: Actor_30 Actor Labe: PB_Hotel_02 has no SM assigned to the ISM
+LogTestPlatform: map /Game/Carla/Maps/Town10HD_Opt: config panel enabled (this run started on an entry map)
+LogTestPlatform: spawned runtime preview camera
+

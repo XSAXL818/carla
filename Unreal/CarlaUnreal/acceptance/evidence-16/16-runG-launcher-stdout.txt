@@ -1,0 +1,5 @@
+health: 200
+launching CARLA (editor/game path) 1280x720 screen=70 map=project default (entry level) panel=expected
+UI is up (pid 41848); session state: none map: 
+press Ctrl+C in this window to leave it running, or close the game window to stop.
+elapsed=44s

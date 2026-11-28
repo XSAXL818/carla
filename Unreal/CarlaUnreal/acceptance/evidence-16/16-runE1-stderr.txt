@@ -1,0 +1,3 @@
+[stderr of UnrealEditor.exe, run E1: entry xodr moved away]
+ERROR: unable to parse the OpenDRIVE XML string
+WARNING: Coud not generate traffic lights: missing map.

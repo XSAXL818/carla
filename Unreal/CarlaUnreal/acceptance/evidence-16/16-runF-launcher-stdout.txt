@@ -1,0 +1,4 @@
+launching CARLA (editor/game path) 1280x720 screen=70 map=/Game/Carla/Maps/Town05_Opt panel=off (not an entry map)
+map is up (pid 43384); the config panel is off on this map (not an entry map)
+press Ctrl+C in this window to leave it running, or close the game window to stop.
+elapsed=32s

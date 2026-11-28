@@ -1,0 +1,115 @@
+
+===== RUN A  launch: /Game/Carla/Maps/Town05_Opt ; then carla client load_world L_TestPlatformEntry ; then load_world Town10HD_Opt   [16-runA-town05-start.log] =====
+[2026.11.28-00.11.07:640][  0]LogTestPlatform: CARLA test platform runtime module started
+[2026.11.28-00.11.07:640][  0]LogTestPlatform: panel gate: entry maps [/Game/TestPlatform/Maps/L_TestPlatformEntry]
+[2026.11.28-00.11.12:372][  0]LogWorld: Bringing World /Game/Carla/Maps/Town05_Opt.Town05_Opt up for play (max tick rate 0) at 2026.11.28-08.11.12
+[2026.11.28-00.11.37:761][  0]LogCarla: Error: Actor Name: InstancedFoliageActor_1 Actor Labe: InstancedFoliageActor1 has no SM assigned to the ISM
+[2026.11.28-00.11.37:774][  0]LogCarla: Error: Actor Name: InstancedFoliageActor_0 Actor Labe: InstancedFoliageActor has no SM assigned to the ISM
+[2026.11.28-00.11.38:676][  0]LogTestPlatform: panel gate: run started on /Game/Carla/Maps/Town05_Opt: not an entry map, the panel stays off even if an entry map is loaded later
+[2026.11.28-00.11.38:832][  0]LogTestPlatform: map /Game/Carla/Maps/Town05_Opt: config panel disabled (this run started on /Game/Carla/Maps/Town05_Opt, which is not an entry map)
+[2026.11.28-00.12.36:349][195]LogWorld: Bringing World /Game/TestPlatform/Maps/L_TestPlatformEntry.L_TestPlatformEntry up for play (max tick rate 0) at 2026.11.28-08.12.36
+[2026.11.28-00.12.48:752][195]LogTestPlatform: map /Game/TestPlatform/Maps/L_TestPlatformEntry: config panel disabled (this run started on /Game/Carla/Maps/Town05_Opt, which is not an entry map)
+[2026.11.28-00.13.36:300][273]LogWorld: Bringing World /Game/Carla/Maps/Town10HD_Opt.Town10HD_Opt up for play (max tick rate 0) at 2026.11.28-08.13.36
+[2026.11.28-00.13.46:958][273]LogCarla: Error: Actor Name: Actor_29 Actor Labe: PB_HotelBase_02 has no SM assigned to the ISM
+[2026.11.28-00.13.46:959][273]LogCarla: Error: Actor Name: Actor_30 Actor Labe: PB_Hotel_02 has no SM assigned to the ISM
+[2026.11.28-00.13.48:318][273]LogTestPlatform: map /Game/Carla/Maps/Town10HD_Opt: config panel disabled (this run started on /Game/Carla/Maps/Town05_Opt, which is not an entry map)
+
+===== RUN B  launch: default (entry level), backend 127.0.0.1:8765 running -> panel auto-previews Town10HD   [16-runB-entry-backend.log] =====
+[2026.11.28-00.15.08:885][  0]LogTestPlatform: CARLA test platform runtime module started
+[2026.11.28-00.15.08:885][  0]LogTestPlatform: panel gate: entry maps [/Game/TestPlatform/Maps/L_TestPlatformEntry]
+[2026.11.28-00.15.11:492][  0]LogWorld: Bringing World /Game/TestPlatform/Maps/L_TestPlatformEntry.L_TestPlatformEntry up for play (max tick rate 0) at 2026.11.28-08.15.11
+[2026.11.28-00.15.39:907][  0]LogTestPlatform: panel gate: run started on /Game/TestPlatform/Maps/L_TestPlatformEntry: entry map, the panel is armed for this run
+[2026.11.28-00.15.39:911][  0]LogTestPlatform: map /Game/TestPlatform/Maps/L_TestPlatformEntry: config panel enabled (entry map)
+[2026.11.28-00.15.39:936][  0]LogTestPlatform: test platform UI added to the game viewport
+[2026.11.28-00.15.39:936][  0]LogTestPlatform: spawned runtime preview camera
+[2026.11.28-00.15.40:543][ 25]LogTestPlatformUI: backend health answered: reachable 0.6 s after panel construction
+[2026.11.28-00.15.40:548][ 25]LogTestPlatformUI: backend adopted: catalog ready with 9 maps, 0.6 s after panel construction
+[2026.11.28-00.16.09:724][ 52]LogWorld: Bringing World /Game/Carla/Maps/Town10HD_Opt.Town10HD_Opt up for play (max tick rate 0) at 2026.11.28-08.16.09
+[2026.11.28-00.16.21:861][ 52]LogTestPlatform: map /Game/Carla/Maps/Town10HD_Opt: config panel enabled (backend preview load in a run that started on an entry map)
+[2026.11.28-00.16.21:873][ 52]LogTestPlatform: spawned runtime preview camera
+
+===== RUN C  launch: default (entry level), backend unreachable ; manual client load_world Town05_Opt ; then load_world L_TestPlatformEntry again   [16-runC-entry-manual-town05.log] =====
+[2026.11.28-00.17.59:548][  0]LogTestPlatform: CARLA test platform runtime module started
+[2026.11.28-00.17.59:548][  0]LogTestPlatform: panel gate: entry maps [/Game/TestPlatform/Maps/L_TestPlatformEntry]
+[2026.11.28-00.18.02:137][  0]LogWorld: Bringing World /Game/TestPlatform/Maps/L_TestPlatformEntry.L_TestPlatformEntry up for play (max tick rate 0) at 2026.11.28-08.18.02
+[2026.11.28-00.18.30:490][  0]LogTestPlatform: panel gate: run started on /Game/TestPlatform/Maps/L_TestPlatformEntry: entry map, the panel is armed for this run
+[2026.11.28-00.18.30:492][  0]LogTestPlatform: map /Game/TestPlatform/Maps/L_TestPlatformEntry: config panel enabled (entry map)
+[2026.11.28-00.18.30:505][  0]LogTestPlatform: test platform UI added to the game viewport
+[2026.11.28-00.18.30:505][  0]LogTestPlatform: spawned runtime preview camera
+[2026.11.28-00.18.48:865][543]LogWorld: Bringing World /Game/Carla/Maps/Town05_Opt.Town05_Opt up for play (max tick rate 0) at 2026.11.28-08.18.48
+[2026.11.28-00.19.04:037][543]LogCarla: Error: Actor Name: InstancedFoliageActor_1 Actor Labe: InstancedFoliageActor1 has no SM assigned to the ISM
+[2026.11.28-00.19.04:051][543]LogCarla: Error: Actor Name: InstancedFoliageActor_0 Actor Labe: InstancedFoliageActor has no SM assigned to the ISM
+[2026.11.28-00.19.04:499][543]LogTestPlatform: panel gate: left the entry flow: world changed /Game/TestPlatform/Maps/L_TestPlatformEntry -> /Game/Carla/Maps/Town05_Opt without a panel-requested preview; the panel stays off for the rest of this run
+[2026.11.28-00.19.04:506][543]LogTestPlatform: map /Game/Carla/Maps/Town05_Opt: config panel disabled (left the entry flow at /Game/Carla/Maps/Town05_Opt, which was not a panel-requested preview)
+[2026.11.28-00.19.04:518][543]LogTestPlatform: test platform UI removed from the game viewport
+[2026.11.28-00.19.29:803][200]LogWorld: Bringing World /Game/TestPlatform/Maps/L_TestPlatformEntry.L_TestPlatformEntry up for play (max tick rate 0) at 2026.11.28-08.19.29
+[2026.11.28-00.19.42:663][200]LogTestPlatform: map /Game/TestPlatform/Maps/L_TestPlatformEntry: config panel disabled (left the entry flow at /Game/TestPlatform/Maps/L_TestPlatformEntry, which was not a panel-requested preview)
+
+===== RUN D  launch: /Game/Carla/Maps/Town05_Opt + -TestPlatformForceUI   [16-runD-forced-town05.log] =====
+[2026.11.28-00.20.47:956][  0]LogTestPlatform: CARLA test platform runtime module started
+[2026.11.28-00.20.47:956][  0]LogTestPlatform: panel gate: entry maps [/Game/TestPlatform/Maps/L_TestPlatformEntry], forced on by -TestPlatformForceUI
+[2026.11.28-00.20.53:880][  0]LogWorld: Bringing World /Game/Carla/Maps/Town05_Opt.Town05_Opt up for play (max tick rate 0) at 2026.11.28-08.20.53
+[2026.11.28-00.21.22:941][  0]LogTestPlatform: panel gate: run started on /Game/Carla/Maps/Town05_Opt: not an entry map, the panel stays off even if an entry map is loaded later
+[2026.11.28-00.21.22:956][  0]LogTestPlatform: map /Game/Carla/Maps/Town05_Opt: config panel enabled (-TestPlatformForceUI)
+[2026.11.28-00.21.22:971][  0]LogTestPlatform: test platform UI added to the game viewport
+[2026.11.28-00.21.22:971][  0]LogTestPlatform: spawned runtime preview camera
+
+===== RUN E1  entry xodr temporarily moved away, launch: default   [16-runE1-xodr-missing.log + 16-runE1-stderr.txt] =====
+[2026.11.28-00.22.45:171][  0]LogTestPlatform: CARLA test platform runtime module started
+[2026.11.28-00.22.45:171][  0]LogTestPlatform: panel gate: entry maps [/Game/TestPlatform/Maps/L_TestPlatformEntry]
+[2026.11.28-00.23.00:320][  0]LogCarla: Error: No OpenDrive file found for map 'L_TestPlatformEntry'
+[2026.11.28-00.23.00:320][  0]LogCarla: Error: Invalid Map
+[2026.11.28-00.23.13:980][  0]LogTestPlatform: panel gate: run started on /Game/TestPlatform/Maps/L_TestPlatformEntry: entry map, the panel is armed for this run
+[2026.11.28-00.23.13:992][  0]LogTestPlatform: map /Game/TestPlatform/Maps/L_TestPlatformEntry: config panel enabled (entry map)
+[2026.11.28-00.23.14:006][  0]LogTestPlatform: test platform UI added to the game viewport
+[2026.11.28-00.23.14:006][  0]LogTestPlatform: spawned runtime preview camera
+[stderr of UnrealEditor.exe, run E1: entry xodr moved away]
+ERROR: unable to parse the OpenDRIVE XML string
+WARNING: Coud not generate traffic lights: missing map.
+
+===== RUN E2  entry xodr restored, launch: default, no backend   [16-runE2-plain-entry.log] =====
+LogCarla: Error lines in this run: <none>
+[2026.11.28-00.24.04:255][  0]LogTestPlatform: CARLA test platform runtime module started
+[2026.11.28-00.24.04:255][  0]LogTestPlatform: panel gate: entry maps [/Game/TestPlatform/Maps/L_TestPlatformEntry]
+[2026.11.28-00.24.04:743][  0]LogClass: Error: DoubleProperty FHitDisplacementEntry::Displacement is not initialized properly. Module:Carla File:BlueprintLibary/MeshToLandscape.h
+[2026.11.28-00.24.17:004][  0]LogCarla: Loaded OpenDrive file 'C:/GameProject/CarlaUE5/carla/Unreal/CarlaUnreal/Content/TestPlatform/Maps/OpenDrive/L_TestPlatformEntry.xodr'
+[2026.11.28-00.24.33:047][  0]LogTestPlatform: panel gate: run started on /Game/TestPlatform/Maps/L_TestPlatformEntry: entry map, the panel is armed for this run
+[2026.11.28-00.24.33:056][  0]LogTestPlatform: map /Game/TestPlatform/Maps/L_TestPlatformEntry: config panel enabled (entry map)
+[2026.11.28-00.24.33:069][  0]LogTestPlatform: test platform UI added to the game viewport
+[2026.11.28-00.24.33:069][  0]LogTestPlatform: spawned runtime preview camera
+
+===== RUN F  pwsh -File run-editor-lowquality.ps1 -Map /Game/Carla/Maps/Town05_Opt   [16-runF-launcher-stdout.txt + 16-runF-launcher-town05.log] =====
+launching CARLA (editor/game path) 1280x720 screen=70 map=/Game/Carla/Maps/Town05_Opt panel=off (not an entry map)
+map is up (pid 43384); the config panel is off on this map (not an entry map)
+press Ctrl+C in this window to leave it running, or close the game window to stop.
+elapsed=32s
+LogTestPlatform: CARLA test platform runtime module started
+LogTestPlatform: panel gate: entry maps [/Game/TestPlatform/Maps/L_TestPlatformEntry]
+LogTestPlatform: panel gate: run started on /Game/Carla/Maps/Town05_Opt: not an entry map, the panel stays off even if an entry map is loaded later
+LogTestPlatform: map /Game/Carla/Maps/Town05_Opt: config panel disabled (this run started on /Game/Carla/Maps/Town05_Opt, which is not an entry map)
+
+===== RUN G  pwsh -File run-editor-lowquality.ps1   (no arguments)   [16-runG-launcher-stdout.txt + 16-runG-launcher-default.log] =====
+health: 200
+launching CARLA (editor/game path) 1280x720 screen=70 map=project default (entry level) panel=expected
+UI is up (pid 41848); session state: none map: 
+press Ctrl+C in this window to leave it running, or close the game window to stop.
+elapsed=44s
+LogTestPlatform: CARLA test platform runtime module started
+LogTestPlatform: panel gate: entry maps [/Game/TestPlatform/Maps/L_TestPlatformEntry]
+LogWorld: Bringing World /Game/TestPlatform/Maps/L_TestPlatformEntry.L_TestPlatformEntry up for play (max tick rate 0) at 2026.11.28-08.27.11
+LogTestPlatform: panel gate: run started on /Game/TestPlatform/Maps/L_TestPlatformEntry: entry map, the panel is armed for this run
+LogTestPlatform: map /Game/TestPlatform/Maps/L_TestPlatformEntry: config panel enabled (entry map)
+LogTestPlatform: test platform UI added to the game viewport
+LogTestPlatform: spawned runtime preview camera
+LogTestPlatformUI: backend health answered: reachable 0.6 s after panel construction
+LogTestPlatformUI: backend adopted: catalog ready with 9 maps, 0.6 s after panel construction
+LogWorld: Bringing World /Game/Carla/Maps/Town10HD_Opt.Town10HD_Opt up for play (max tick rate 0) at 2026.11.28-08.27.55
+LogTestPlatform: map /Game/Carla/Maps/Town10HD_Opt: config panel enabled (backend preview load in a run that started on an entry map)
+LogTestPlatform: spawned runtime preview camera
+LogWorld: Bringing World /Game/Carla/Maps/Town05_Opt.Town05_Opt up for play (max tick rate 0) at 2026.11.28-08.30.23
+LogTestPlatform: map /Game/Carla/Maps/Town05_Opt: config panel enabled (backend preview load in a run that started on an entry map)
+LogTestPlatform: spawned runtime preview camera
+LogWorld: Bringing World /Game/Carla/Maps/Town10HD_Opt.Town10HD_Opt up for play (max tick rate 0) at 2026.11.28-08.31.51
+LogTestPlatform: panel gate: left the entry flow: world changed /Game/Carla/Maps/Town05_Opt -> /Game/Carla/Maps/Town10HD_Opt without a panel-requested preview; the panel stays off for the rest of this run
+LogTestPlatform: map /Game/Carla/Maps/Town10HD_Opt: config panel disabled (left the entry flow at /Game/Carla/Maps/Town10HD_Opt, which was not a panel-requested preview)
+LogTestPlatform: test platform UI removed from the game viewport
