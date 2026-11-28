@@ -50,3 +50,8 @@ Plugins/Packs
 Config/Linux/
 Config/Windows/
 Config/Mac/
+
+# DSH harness working data: mission log and locally installed plugins.
+# Session-specific, regenerated per machine — never commit.
+/.dsh/
+/dsh-plugins/
