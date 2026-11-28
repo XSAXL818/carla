@@ -5,6 +5,11 @@
 
 ---
 
+### 14:55 · DSH 桌面 profile 注册 CARLA 技能库 MCP（`carla`）
+- **问题**：`Util/AgenticTools` 的 MCP 服务只在仓库自带 `.mcp.json` 里登记，DSH 桌面 profile 没接，助手查 CARLA 技能库只能逐个读 `Skills/` 下的文件。
+- **处理**：在 `C:\Users\LoongTory\.dsh\profiles\desktop\cordis.patch.yml` 的 MCP 段插入一条 `@deepseek-ai/dsh-mcp-client` 行（`id: carla` / `serverName: "carla"` / `transport: stdio` / `command: node`），`args` 用**绝对路径** `C:/GameProject/CarlaUE5/carla/Util/AgenticTools/bin/carla-agentic-tools.js`（相对路径会按 Host 工作目录解析）；`toolCallTimeoutMs: 180000`，因为 `check_prerequisites` 内部给 `check_env.sh` 留了 120 s，默认 60 s 会截断正常调用。改前备份 `cordis.patch.yml.bak-2026-11-28T06-53-21-carla`（SHA256 一致），改后 PyYAML 解析通过；未重启 Host，HMR 热加载生效。
+- **结果**：MCP 里 `mcp__carla__list_skills` / `read_skill` 实测可用（`read_skill` 返回 `Skill directory: C:\GameProject\CarlaUE5\carla\Skills\setup\check-carla-ports`，说明脚本按自身 `__dirname` 定位 `Skills/`，不依赖 cwd）。副作用一条：`get_config` 报告 `CARLA_ROOT=C:\GameProject\CarlaUE5\CarlaUE5` 已失效（该目录不存在，实际仓库在 `C:\GameProject\CarlaUE5\carla`），ue4/ue5/ue58 三组技能因此显示 `available: false`，需用 `set_config` 更正。
+
 ### 10:45 · Town10 三项缺陷修复：路线预设 / 背景车 / 停滞误报
 - **问题**：① `loop` 预设 18 个航点里 8 个按 `(road, lane_id=-1, s)` 解析不出（735/469 只有 lane 1，不是路不存在），且路线折线从未画出来；② 背景车 `轻度 4` 实际 0 辆；③ 到终点停车 8 s 被判 `ego_stalled`。
 - **处理**：`gen_route_presets.py` 读取 laneSection，按 s 取真实存在的行驶车道（右侧优先），重新生成 `data/routes/Town10HD.json`（schema 不变、长度/航点数不变）；`session_runner.py` 把 `draw_polyline`（本分支 DebugHelper 没有这个方法，AttributeError 被 `except: pass` 吞掉）改为逐段 `draw_line`（life 5 s、每 2 s 重画、失败记事件）；背景车的 1.5 km“净空泡”在 500 m 见方的 Town10 上把 155 个出生点全过滤掉，改为 25 m 净空 + 最远优先 + 25 m 间距，逐点记录失败原因并在 start 时把车交给同步 TM；停滞判定改为“到终点/无剩余计划不算、throttle>=0.05 才累计 8 s”。
