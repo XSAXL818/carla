@@ -1411,6 +1411,13 @@ void STestPlatformUI::LoadSelectedMap(TFunction<void(bool)> Done)
 		}
 		else
 		{
+			// The load never started (bad map id, backend gone): no world change
+			// for this map is coming, so the module drops it as the expected
+			// preview and only a live, requested one can keep the panel armed.
+			if (OnPreviewFailed)
+			{
+				OnPreviewFailed();
+			}
 			SetStatus(FString::Printf(TEXT("加载地图失败：%s"), *Error), true);
 		}
 		if (Done)

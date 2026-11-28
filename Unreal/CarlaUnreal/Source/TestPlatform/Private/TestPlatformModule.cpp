@@ -270,6 +270,9 @@ void FTestPlatformModule::EnsureUI(UGameViewportClient* ViewportClient)
 		// The panel's own map requests are what may keep an entry run's panel
 		// through a world change; see the map gate in TickRuntime.
 		UI->OnPreviewRequest = [this](const FString& MapId) { ExpectedPreviewMap = MapId; };
+		// A request that never turns into a world change must not stay expected:
+		// only a live, requested preview keeps the arm (see the map gate).
+		UI->OnPreviewFailed = [this]() { ClearExpectedPreview(TEXT("the preview request failed")); };
 		// The 「启动后端」 button and TestPlatform.StartBackend share this one path.
 		UI->OnStartBackend = [this](FString& OutError) { return StartBackendNow(OutError); };
 	}
@@ -372,6 +375,19 @@ bool FTestPlatformModule::IsBackendPreviewMap(const FString& MapId) const
 	return Normalize(MapId) == Normalize(ExpectedPreviewMap);
 }
 
+void FTestPlatformModule::ClearExpectedPreview(const TCHAR* Why)
+{
+	if (ExpectedPreviewMap.IsEmpty())
+	{
+		return;
+	}
+	UE_LOG(LogTestPlatform, Log,
+		TEXT("panel gate: dropping the expected preview %s (%s); only a live, requested preview keeps the panel armed"),
+		*ExpectedPreviewMap, Why);
+	GLog->Flush();
+	ExpectedPreviewMap.Reset();
+}
+
 void FTestPlatformModule::ResetGateForNewSession()
 {
 	if (!bGateDecided && LastRuntimeMapId.IsEmpty() && !bPanelAdded)
@@ -384,6 +400,7 @@ void FTestPlatformModule::ResetGateForNewSession()
 	bGateDecided = false;
 	bEntryMapArmed = false;
 	bEntryFlowLeft = false;
+	EntryFlowLeftMapId.Reset();
 	bPanelManuallyShown = false;
 	RunStartMapId.Reset();
 	LastRuntimeMapId.Reset();
@@ -840,9 +857,12 @@ bool FTestPlatformModule::TickRuntime(float DeltaTime)
 		{
 			bEntryMapArmed = false;
 			bEntryFlowLeft = true;
+			// Retain the map that ended the entry flow: the per-map audit line
+			// must name it even after LastRuntimeMapId has moved on.
+			EntryFlowLeftMapId = MapId;
 			UE_LOG(LogTestPlatform, Log,
 				TEXT("panel gate: left the entry flow: world changed %s -> %s without a panel-requested preview; the panel stays off for the rest of this run"),
-				*LastRuntimeMapId, *MapId);
+				*LastRuntimeMapId, *EntryFlowLeftMapId);
 			GLog->Flush();
 		}
 		if (bPreviewMap)
@@ -874,8 +894,8 @@ bool FTestPlatformModule::TickRuntime(float DeltaTime)
 		else if (bEntryFlowLeft)
 		{
 			Reason = FString::Printf(
-				TEXT("left the entry flow at %s, which was not a panel-requested preview"),
-				*LastRuntimeMapId);
+				TEXT("left the entry flow at %s, now at %s, which was not a panel-requested preview"),
+				*EntryFlowLeftMapId, *MapId);
 		}
 		else
 		{
@@ -1121,6 +1141,13 @@ void FTestPlatformModule::HandleSessionState(
 		{
 			CameraRig.SetFollowPose(Location, Rotation);
 		}
+	}
+
+	// A session that ended in error will never deliver the world change the panel
+	// asked for, so that map must not stay armed as the expected preview.
+	if (State == TEXT("error"))
+	{
+		ClearExpectedPreview(TEXT("the session reported an error"));
 	}
 
 	if (State != LastSessionState)

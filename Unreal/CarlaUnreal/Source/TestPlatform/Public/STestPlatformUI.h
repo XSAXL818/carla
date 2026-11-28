@@ -72,6 +72,11 @@ public:
 	 */
 	TFunction<void(const FString& /*MapId*/)> OnPreviewRequest;
 	/**
+	 * The request above failed: no load of that map is coming, so the module
+	 * must drop it as the expected preview (see FTestPlatformModule::ClearExpectedPreview).
+	 */
+	TFunction<void()> OnPreviewFailed;
+	/**
 	 * Starts the Python backend on the user's explicit request (the 「启动后端」
 	 * button). Bound by the module to the same launch path the automatic start
 	 * uses. Returns false and fills OutError when the launch cannot even be

@@ -88,17 +88,32 @@ if (Test-Path $defaultGameIni) {
 }
 if ($entryMaps.Count -eq 0) { $entryMaps = @('/Game/TestPlatform/Maps/L_TestPlatformEntry') }
 
+# DefaultEngine.ini writes maps in the object-path form
+# (/Game/.../L_TestPlatformEntry.L_TestPlatformEntry), while what matters here is
+# the package name, so a trailing ".<AssetName>" is dropped - from the -Map value
+# and from the whitelist entries alike. Only a dot after the last slash counts, so
+# a folder that merely contains a dot is left alone.
+function ConvertTo-MapPackageName([string]$Value) {
+    $text = "$Value".Trim()
+    $dot = $text.LastIndexOf('.')
+    if ($dot -gt $text.LastIndexOf('/')) { $text = $text.Substring(0, $dot) }
+    return $text
+}
+
 function Test-EntryMap([string]$Name) {
     if ([string]::IsNullOrWhiteSpace($Name)) { return $false }
-    $short = $Name.Substring($Name.LastIndexOf('/') + 1)
+    $mapName = ConvertTo-MapPackageName $Name
+    $short = $mapName.Substring($mapName.LastIndexOf('/') + 1)
     foreach ($entry in $entryMaps) {
-        if ([string]::Equals($entry, $Name, [System.StringComparison]::OrdinalIgnoreCase) -or
-            [string]::Equals($entry, $short, [System.StringComparison]::OrdinalIgnoreCase)) {
+        $candidate = ConvertTo-MapPackageName $entry
+        if ($candidate -eq '') { continue }
+        if ([string]::Equals($candidate, $mapName, [System.StringComparison]::OrdinalIgnoreCase) -or
+            [string]::Equals($candidate, $short, [System.StringComparison]::OrdinalIgnoreCase)) {
             return $true
         }
-        if ($Name.Length -gt $entry.Length -and
-            $Name.EndsWith($entry, [System.StringComparison]::OrdinalIgnoreCase) -and
-            $Name[$Name.Length - $entry.Length - 1] -eq '/') {
+        if ($mapName.Length -gt $candidate.Length -and
+            $mapName.EndsWith($candidate, [System.StringComparison]::OrdinalIgnoreCase) -and
+            $mapName[$mapName.Length - $candidate.Length - 1] -eq '/') {
             return $true
         }
     }

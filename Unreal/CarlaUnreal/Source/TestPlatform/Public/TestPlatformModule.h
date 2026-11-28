@@ -58,6 +58,12 @@ private:
 	static FString WorldMapId(const UWorld* World);
 	/** True when MapId is the town the panel itself asked the backend to load. */
 	bool IsBackendPreviewMap(const FString& MapId) const;
+	/**
+	 * Forgets ExpectedPreviewMap when its request can no longer deliver a world
+	 * change (the request failed, or the session ended in error), so a later
+	 * manual load of exactly that town is not mistaken for the live preview.
+	 */
+	void ClearExpectedPreview(const TCHAR* Why);
 	/** Forgets the per-run gate state when the game/PIE session is gone. */
 	void ResetGateForNewSession();
 
@@ -125,6 +131,12 @@ private:
 	bool bGateDecided = false;
 	/** The run's arm was dropped by a world change that was not a backend preview. */
 	bool bEntryFlowLeft = false;
+	/**
+	 * The map that ended the entry flow (the first world change the panel did
+	 * not request); set once with bEntryFlowLeft and never rewritten, so the
+	 * per-map log line names it instead of whatever map the run is on now.
+	 */
+	FString EntryFlowLeftMapId;
 	/**
 	 * Map the panel asked the backend to load (STestPlatformUI::OnPreviewRequest).
 	 * That world change is the one exception an entry run keeps its panel through;
