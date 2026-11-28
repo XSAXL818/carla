@@ -1,0 +1,35 @@
+{
+ "source": "OpenDRIVE",
+ "maps": {
+  "Town10HD": {
+   "roads": 108,
+   "junctions": 18,
+   "presets": [
+    {
+     "id": "loop",
+     "name": "城市环线",
+     "length_km": 0.4,
+     "waypoints": 24
+    },
+    {
+     "id": "arterial",
+     "name": "干道直行",
+     "length_km": 0.63,
+     "waypoints": 32
+    },
+    {
+     "id": "cross",
+     "name": "跨图长途",
+     "length_km": 0.75,
+     "waypoints": 48
+    },
+    {
+     "id": "turns",
+     "name": "路口穿行",
+     "length_km": 0.91,
+     "waypoints": 48
+    }
+   ]
+  }
+ }
+}

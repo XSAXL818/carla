@@ -1,0 +1,1 @@
+{"events":[{"t":0.0,"kind":"route_plan","detail":"路线计划：47 段（沿车道 24，跨路 23，失败 0），407 点，842.3 m，预设航点 48 个"},{"t":0.33,"kind":"ego_spawn","detail":"主车出生：road 254 lane 4 （plan_start）yaw -179.8（计划首段 -179.8，偏差 -0.0°），距计划起点 0.1 m"},{"t":16.666666666666675,"kind":"agent_plan","detail":"路线计划已装载：407 个航点，842.3 m，终点 road 150 lane 1"}],"count":3}

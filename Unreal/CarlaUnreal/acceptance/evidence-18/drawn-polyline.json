@@ -1,0 +1,1050 @@
+{
+ "loop": [
+  {
+   "x": -73.06,
+   "y": 135.48,
+   "stored_lane": -1,
+   "lane_used": 1,
+   "leg_yaw": 14.2,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -110.74,
+   "y": 44.86,
+   "stored_lane": -1,
+   "lane_used": 1,
+   "leg_yaw": 90.6,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -110.72,
+   "y": 42.86,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": 90.6,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -110.23,
+   "y": -1.29,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": 90.6,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -110.2,
+   "y": -3.29,
+   "stored_lane": -1,
+   "lane_used": 1,
+   "leg_yaw": 90.6,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -68.08,
+   "y": -65.2,
+   "stored_lane": -1,
+   "lane_used": 1,
+   "leg_yaw": 180.6,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -110.23,
+   "y": -1.29,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": 90.6,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -110.72,
+   "y": 42.86,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": 90.6,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -110.74,
+   "y": 44.86,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": 90.6,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -73.06,
+   "y": 135.48,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": 14.2,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -70.33,
+   "y": 132.52,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": -168.5,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -48.48,
+   "y": 115.97,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": 89.8,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -48.49,
+   "y": 113.96,
+   "stored_lane": -1,
+   "lane_used": 1,
+   "leg_yaw": 89.8,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -48.57,
+   "y": 83.65,
+   "stored_lane": -1,
+   "lane_used": 1,
+   "leg_yaw": 89.8,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -48.48,
+   "y": 115.97,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": 89.8,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -70.33,
+   "y": 132.52,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": -168.5,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -73.06,
+   "y": 135.48,
+   "stored_lane": -1,
+   "lane_used": 1,
+   "leg_yaw": 14.2,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -110.74,
+   "y": 44.86,
+   "stored_lane": -1,
+   "lane_used": 1,
+   "leg_yaw": 90.6,
+   "lane_type": "Driving"
+  }
+ ],
+ "arterial": [
+  {
+   "x": 102.98,
+   "y": -23.66,
+   "stored_lane": -1,
+   "lane_used": 1,
+   "leg_yaw": 89.4,
+   "lane_type": "Driving"
+  },
+  {
+   "x": 8.41,
+   "y": -60.9,
+   "stored_lane": -1,
+   "lane_used": 1,
+   "leg_yaw": 360.0,
+   "lane_type": "Driving"
+  },
+  {
+   "x": 6.4,
+   "y": -60.9,
+   "stored_lane": -1,
+   "lane_used": 1,
+   "leg_yaw": 360.2,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -4.34,
+   "y": -61.04,
+   "stored_lane": -1,
+   "lane_used": 1,
+   "leg_yaw": 0.6,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -6.31,
+   "y": -64.56,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": 180.6,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -26.76,
+   "y": -64.77,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": 180.6,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -28.8,
+   "y": -61.29,
+   "stored_lane": -1,
+   "lane_used": -1,
+   "leg_yaw": -359.4,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -66.12,
+   "y": -61.68,
+   "stored_lane": -1,
+   "lane_used": -1,
+   "leg_yaw": -359.4,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -68.08,
+   "y": -65.2,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": 180.6,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -110.2,
+   "y": -3.29,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": 90.6,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -110.23,
+   "y": -1.29,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": 90.6,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -110.72,
+   "y": 42.86,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": 90.6,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -110.74,
+   "y": 44.86,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": 90.6,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -73.06,
+   "y": 135.48,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": 14.2,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -70.33,
+   "y": 132.52,
+   "stored_lane": -1,
+   "lane_used": -1,
+   "leg_yaw": -168.5,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -29.54,
+   "y": 133.53,
+   "stored_lane": -1,
+   "lane_used": -1,
+   "leg_yaw": -539.6,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -27.56,
+   "y": 137.04,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": 0.4,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -1.19,
+   "y": 137.2,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": 0.4,
+   "lane_type": "Driving"
+  },
+  {
+   "x": 0.83,
+   "y": 133.72,
+   "stored_lane": -1,
+   "lane_used": 1,
+   "leg_yaw": 180.4,
+   "lane_type": "Driving"
+  },
+  {
+   "x": 18.37,
+   "y": 133.95,
+   "stored_lane": -1,
+   "lane_used": 1,
+   "leg_yaw": 180.3,
+   "lane_type": "Driving"
+  },
+  {
+   "x": 20.37,
+   "y": 133.97,
+   "stored_lane": -1,
+   "lane_used": 1,
+   "leg_yaw": 180.3,
+   "lane_type": "Driving"
+  },
+  {
+   "x": 102.29,
+   "y": 83.91,
+   "stored_lane": -1,
+   "lane_used": 1,
+   "leg_yaw": 90.4,
+   "lane_type": "Driving"
+  },
+  {
+   "x": 105.81,
+   "y": 81.94,
+   "stored_lane": -1,
+   "lane_used": -1,
+   "leg_yaw": -449.6,
+   "lane_type": "Driving"
+  },
+  {
+   "x": 106.0,
+   "y": 54.27,
+   "stored_lane": -1,
+   "lane_used": -1,
+   "leg_yaw": -449.6,
+   "lane_type": "Driving"
+  },
+  {
+   "x": 102.51,
+   "y": 52.25,
+   "stored_lane": -1,
+   "lane_used": 1,
+   "leg_yaw": 90.4,
+   "lane_type": "Driving"
+  },
+  {
+   "x": 102.57,
+   "y": 43.17,
+   "stored_lane": -1,
+   "lane_used": 1,
+   "leg_yaw": 90.4,
+   "lane_type": "Driving"
+  },
+  {
+   "x": 102.59,
+   "y": 41.17,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": 90.4,
+   "lane_type": "Driving"
+  },
+  {
+   "x": 102.89,
+   "y": -3.47,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": 90.4,
+   "lane_type": "Driving"
+  },
+  {
+   "x": 102.9,
+   "y": -5.47,
+   "stored_lane": -1,
+   "lane_used": 1,
+   "leg_yaw": 90.4,
+   "lane_type": "Driving"
+  },
+  {
+   "x": 102.92,
+   "y": -8.38,
+   "stored_lane": -1,
+   "lane_used": 1,
+   "leg_yaw": 90.4,
+   "lane_type": "Driving"
+  },
+  {
+   "x": 102.94,
+   "y": -10.38,
+   "stored_lane": -1,
+   "lane_used": 1,
+   "leg_yaw": 90.4,
+   "lane_type": "Driving"
+  },
+  {
+   "x": 102.97,
+   "y": -21.7,
+   "stored_lane": -1,
+   "lane_used": 1,
+   "leg_yaw": 450.7,
+   "lane_type": "Driving"
+  }
+ ],
+ "cross": [
+  {
+   "x": -29.54,
+   "y": 133.53,
+   "stored_lane": -1,
+   "lane_used": -1,
+   "leg_yaw": -539.6,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -70.33,
+   "y": 132.52,
+   "stored_lane": -1,
+   "lane_used": -1,
+   "leg_yaw": -168.5,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -73.06,
+   "y": 135.48,
+   "stored_lane": -1,
+   "lane_used": 1,
+   "leg_yaw": 14.2,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -110.74,
+   "y": 44.86,
+   "stored_lane": -1,
+   "lane_used": 1,
+   "leg_yaw": 90.6,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -96.34,
+   "y": 43.02,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": 90.6,
+   "lane_type": "Sidewalk"
+  },
+  {
+   "x": -89.7,
+   "y": 35.82,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": 180.2,
+   "lane_type": "Sidewalk"
+  },
+  {
+   "x": -87.65,
+   "y": 16.44,
+   "stored_lane": -1,
+   "lane_used": 4,
+   "leg_yaw": 180.2,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -79.04,
+   "y": 16.46,
+   "stored_lane": -1,
+   "lane_used": 4,
+   "leg_yaw": 180.2,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -77.04,
+   "y": 16.47,
+   "stored_lane": -1,
+   "lane_used": 4,
+   "leg_yaw": 180.2,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -67.8,
+   "y": 16.5,
+   "stored_lane": -1,
+   "lane_used": 4,
+   "leg_yaw": 180.2,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -65.86,
+   "y": 35.89,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": 180.2,
+   "lane_type": "Sidewalk"
+  },
+  {
+   "x": -59.57,
+   "y": 41.59,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": 269.8,
+   "lane_type": "Sidewalk"
+  },
+  {
+   "x": -48.68,
+   "y": 43.56,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": 89.8,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -48.66,
+   "y": 50.73,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": 89.8,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -34.27,
+   "y": 52.62,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": 448.9,
+   "lane_type": "Sidewalk"
+  },
+  {
+   "x": -28.01,
+   "y": 58.33,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": 0.1,
+   "lane_type": "Sidewalk"
+  },
+  {
+   "x": -26.02,
+   "y": 69.72,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": 0.1,
+   "lane_type": "Driving"
+  },
+  {
+   "x": 26.14,
+   "y": 69.78,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": 0.1,
+   "lane_type": "Driving"
+  },
+  {
+   "x": 28.14,
+   "y": 69.78,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": 0.1,
+   "lane_type": "Driving"
+  },
+  {
+   "x": 57.05,
+   "y": 69.82,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": 0.1,
+   "lane_type": "Driving"
+  },
+  {
+   "x": 59.05,
+   "y": 69.82,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": 0.1,
+   "lane_type": "Driving"
+  },
+  {
+   "x": 84.98,
+   "y": 69.86,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": 0.1,
+   "lane_type": "Driving"
+  },
+  {
+   "x": 86.74,
+   "y": 77.75,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": 183.6,
+   "lane_type": "Sidewalk"
+  },
+  {
+   "x": 91.39,
+   "y": 82.26,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": 263.7,
+   "lane_type": "Sidewalk"
+  },
+  {
+   "x": 102.29,
+   "y": 83.91,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": 90.4,
+   "lane_type": "Driving"
+  },
+  {
+   "x": 20.37,
+   "y": 133.97,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": 180.3,
+   "lane_type": "Driving"
+  },
+  {
+   "x": 18.37,
+   "y": 133.95,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": 180.3,
+   "lane_type": "Driving"
+  },
+  {
+   "x": 0.83,
+   "y": 133.72,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": 180.4,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -1.19,
+   "y": 137.2,
+   "stored_lane": -1,
+   "lane_used": 1,
+   "leg_yaw": 0.4,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -27.56,
+   "y": 137.04,
+   "stored_lane": -1,
+   "lane_used": 1,
+   "leg_yaw": 0.4,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -29.56,
+   "y": 137.03,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": -359.6,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -71.03,
+   "y": 135.95,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": 11.5,
+   "lane_type": "Driving"
+  }
+ ],
+ "turns": [
+  {
+   "x": 102.59,
+   "y": 41.17,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": 90.4,
+   "lane_type": "Driving"
+  },
+  {
+   "x": 102.89,
+   "y": -3.47,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": 90.4,
+   "lane_type": "Driving"
+  },
+  {
+   "x": 102.92,
+   "y": -8.38,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": 90.4,
+   "lane_type": "Driving"
+  },
+  {
+   "x": 102.9,
+   "y": -5.47,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": 90.4,
+   "lane_type": "Driving"
+  },
+  {
+   "x": 102.89,
+   "y": -3.47,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": 90.4,
+   "lane_type": "Driving"
+  },
+  {
+   "x": 102.59,
+   "y": 41.17,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": 90.4,
+   "lane_type": "Driving"
+  },
+  {
+   "x": 102.57,
+   "y": 43.17,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": 90.4,
+   "lane_type": "Driving"
+  },
+  {
+   "x": 102.51,
+   "y": 52.25,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": 90.4,
+   "lane_type": "Driving"
+  },
+  {
+   "x": 106.0,
+   "y": 54.27,
+   "stored_lane": -1,
+   "lane_used": -1,
+   "leg_yaw": -449.6,
+   "lane_type": "Driving"
+  },
+  {
+   "x": 105.81,
+   "y": 81.94,
+   "stored_lane": -1,
+   "lane_used": -1,
+   "leg_yaw": -449.6,
+   "lane_type": "Driving"
+  },
+  {
+   "x": 102.29,
+   "y": 83.91,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": 90.4,
+   "lane_type": "Driving"
+  },
+  {
+   "x": 20.37,
+   "y": 133.97,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": 180.3,
+   "lane_type": "Driving"
+  },
+  {
+   "x": 18.37,
+   "y": 133.95,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": 180.3,
+   "lane_type": "Driving"
+  },
+  {
+   "x": 0.83,
+   "y": 133.72,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": 180.4,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -1.19,
+   "y": 137.2,
+   "stored_lane": -1,
+   "lane_used": 1,
+   "leg_yaw": 0.4,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -27.56,
+   "y": 137.04,
+   "stored_lane": -1,
+   "lane_used": 1,
+   "leg_yaw": 0.4,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -29.54,
+   "y": 133.53,
+   "stored_lane": -1,
+   "lane_used": -1,
+   "leg_yaw": -539.6,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -70.33,
+   "y": 132.52,
+   "stored_lane": -1,
+   "lane_used": -1,
+   "leg_yaw": -168.5,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -73.06,
+   "y": 135.48,
+   "stored_lane": -1,
+   "lane_used": 1,
+   "leg_yaw": 14.2,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -110.74,
+   "y": 44.86,
+   "stored_lane": -1,
+   "lane_used": 1,
+   "leg_yaw": 90.6,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -107.22,
+   "y": 42.9,
+   "stored_lane": -1,
+   "lane_used": -1,
+   "leg_yaw": -89.4,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -106.73,
+   "y": -1.25,
+   "stored_lane": -1,
+   "lane_used": -1,
+   "leg_yaw": -89.4,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -110.2,
+   "y": -3.29,
+   "stored_lane": -1,
+   "lane_used": 1,
+   "leg_yaw": 90.6,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -68.08,
+   "y": -65.2,
+   "stored_lane": -1,
+   "lane_used": 1,
+   "leg_yaw": 180.6,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -110.23,
+   "y": -1.29,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": 90.6,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -110.72,
+   "y": 42.86,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": 90.6,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -110.74,
+   "y": 44.86,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": 90.6,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -73.06,
+   "y": 135.48,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": 14.2,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -70.33,
+   "y": 132.52,
+   "stored_lane": -1,
+   "lane_used": -1,
+   "leg_yaw": -168.5,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -29.54,
+   "y": 133.53,
+   "stored_lane": -1,
+   "lane_used": -1,
+   "leg_yaw": -539.6,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -27.56,
+   "y": 137.04,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": 0.4,
+   "lane_type": "Driving"
+  },
+  {
+   "x": -1.19,
+   "y": 137.2,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": 0.4,
+   "lane_type": "Driving"
+  },
+  {
+   "x": 0.83,
+   "y": 133.72,
+   "stored_lane": -1,
+   "lane_used": 1,
+   "leg_yaw": 180.4,
+   "lane_type": "Driving"
+  },
+  {
+   "x": 18.37,
+   "y": 133.95,
+   "stored_lane": -1,
+   "lane_used": 1,
+   "leg_yaw": 180.3,
+   "lane_type": "Driving"
+  },
+  {
+   "x": 20.37,
+   "y": 133.97,
+   "stored_lane": -1,
+   "lane_used": 1,
+   "leg_yaw": 180.3,
+   "lane_type": "Driving"
+  },
+  {
+   "x": 102.29,
+   "y": 83.91,
+   "stored_lane": -1,
+   "lane_used": 1,
+   "leg_yaw": 90.4,
+   "lane_type": "Driving"
+  },
+  {
+   "x": 105.81,
+   "y": 81.94,
+   "stored_lane": -1,
+   "lane_used": -1,
+   "leg_yaw": -449.6,
+   "lane_type": "Driving"
+  },
+  {
+   "x": 106.0,
+   "y": 54.27,
+   "stored_lane": -1,
+   "lane_used": -1,
+   "leg_yaw": -449.6,
+   "lane_type": "Driving"
+  },
+  {
+   "x": 102.51,
+   "y": 52.25,
+   "stored_lane": -1,
+   "lane_used": 1,
+   "leg_yaw": 90.4,
+   "lane_type": "Driving"
+  },
+  {
+   "x": 102.57,
+   "y": 43.17,
+   "stored_lane": -1,
+   "lane_used": 1,
+   "leg_yaw": 90.4,
+   "lane_type": "Driving"
+  },
+  {
+   "x": 106.09,
+   "y": 41.19,
+   "stored_lane": -1,
+   "lane_used": -1,
+   "leg_yaw": -89.6,
+   "lane_type": "Driving"
+  },
+  {
+   "x": 106.39,
+   "y": -3.45,
+   "stored_lane": -1,
+   "lane_used": -1,
+   "leg_yaw": -89.6,
+   "lane_type": "Driving"
+  },
+  {
+   "x": 102.9,
+   "y": -5.47,
+   "stored_lane": -1,
+   "lane_used": 1,
+   "leg_yaw": 90.4,
+   "lane_type": "Driving"
+  },
+  {
+   "x": 102.92,
+   "y": -8.38,
+   "stored_lane": -1,
+   "lane_used": 1,
+   "leg_yaw": 90.4,
+   "lane_type": "Driving"
+  },
+  {
+   "x": 99.39,
+   "y": -3.5,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": 90.4,
+   "lane_type": "Driving"
+  },
+  {
+   "x": 84.08,
+   "y": 13.42,
+   "stored_lane": 1,
+   "lane_used": 1,
+   "leg_yaw": -179.8,
+   "lane_type": "Driving"
+  },
+  {
+   "x": 82.07,
+   "y": 16.91,
+   "stored_lane": 4,
+   "lane_used": 4,
+   "leg_yaw": 180.2,
+   "lane_type": "Driving"
+  },
+  {
+   "x": 58.44,
+   "y": 16.85,
+   "stored_lane": 4,
+   "lane_used": 4,
+   "leg_yaw": 180.2,
+   "lane_type": "Driving"
+  }
+ ]
+}

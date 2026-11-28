@@ -59,6 +59,20 @@ r.DepthOfFieldQuality 0
 3. **同一时刻只允许一个编辑器进程**。它是单例：两个 agent 同时要就会互相阻塞（已经发生过一次，
    一个 agent 因此卡了 45 分钟）。需要抢资源时先确认端口 2000/2001/2002 没有监听。
 
+## PIE 验证的三个坑（会产出假结论，比参数更危险）
+
+1. **`-ExecCmds` 必须整体加引号**。不加引号时命令行只把第一个 token 当成 ExecCmds，后面的
+   （如 `TestPlatform.BackendAutoStart 0`）**不会生效** —— 后端会自动拉起并 `load_world` 一张图，
+   把“应该没有面板”的否定用例变成假阳性。已实测踩中一次。
+2. **地图参数必须写在 `-pie` 之前**。`-pie /Game/Carla/Maps/Town05_Opt` 会**静默打开启动图**，
+   测的并不是你指定的那张图。
+3. **不要用 `-ExecutePythonScript=` 驱动编辑器**。脚本返回时 `EditorPythonExecuter.cpp:125`
+   会调用 `RequestExit()`，**直接把编辑器关掉**。改用控制台 `py` 命令；并且 `load_level()` 是同步的、
+   会重入 slate post-tick 回调，调用前必须先推进 phase，否则崩在 `FlushLevelStreaming`。
+
+**PIE 的启动方式**：本引擎**没有**控制台 `Play` 命令，用启动开关 `-pie`
+（`UnrealEdMisc::OnInit` 加载地图后，`UnrealEdGlobals.cpp:310` → `StartLevelEditorPIE`）。
+
 ## 已知的启动异常（不是参数问题）
 
 - 编辑器偶发在启动阶段崩在引擎 `DevHttp`（`InheritedContext.cpp:130` 断言），**原样重试即可**，与本次改动无关。

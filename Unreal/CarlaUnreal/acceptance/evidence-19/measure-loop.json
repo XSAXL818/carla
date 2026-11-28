@@ -1,0 +1,103 @@
+{
+ "session": "20261128-153936-2a213f",
+ "preset": "loop",
+ "plan_meta": {
+  "points": 263,
+  "length_m": 541.8,
+  "preset_waypoints": 24,
+  "unresolved_waypoints": 0,
+  "hops": 23,
+  "walked": 12,
+  "traced": 11,
+  "failed": 0
+ },
+ "spawn_meta": {
+  "x": null,
+  "y": null,
+  "z": null,
+  "yaw": null,
+  "plan_yaw": -161.68,
+  "plan_first_waypoint": {
+   "road_id": 5,
+   "lane_id": -1,
+   "s": 1.0
+  },
+  "requested_distance_to_plan_start_m": 1.13,
+  "measured": false
+ },
+ "samples": 653,
+ "driven_m": 515.43,
+ "plan_length_m": 541.8,
+ "plan_polyline_points": 263,
+ "plan_polyline_length_m": 541.86,
+ "preset_polyline_points": 24,
+ "preset_polyline_length_m": 477.87,
+ "spawn_yaw_actual": -161.66,
+ "spawn_yaw_first_sample": -161.66,
+ "plan_first_bearing": -164.3,
+ "spawn_yaw_delta_deg": 2.64,
+ "coincidence_within_3m_pct": 100.0,
+ "coincidence_within_1m_pct": 90.8,
+ "coincidence_within_3m_pct_vs_preset": 59.4,
+ "distance_to_plan_m": {
+  "min": 0.0,
+  "median": 0.1,
+  "max": 1.92
+ },
+ "events": [
+  {
+   "t": 0.0,
+   "kind": "route_plan",
+   "detail": "路线计划：23 段（沿车道 12，跨路 11，失败 0），263 点，541.8 m，预设航点 24 个"
+  },
+  {
+   "t": 0.0,
+   "kind": "traffic_spawn",
+   "detail": "背景车：请求 4，生成 4，候选点 155，蓝图 18，间距跳过 10，失败 0"
+  },
+  {
+   "t": 0.0,
+   "kind": "sync_mode_lost",
+   "detail": "模拟器不再处于同步模式（fixed_delta_seconds 为空）：仿真继续运行，指标按最后已知步长 0.3333 s 计时"
+  },
+  {
+   "t": 0.0,
+   "kind": "traffic_manager",
+   "detail": "交通管理器：4 辆车已交给 TM 自动驾驶，TM 同步模式开启"
+  },
+  {
+   "t": 0.05,
+   "kind": "ego_spawn",
+   "detail": "主车出生：road 5 lane -1 yaw -161.7（计划首段 -161.7，偏差 +0.0°），距计划起点 0.96 m"
+  },
+  {
+   "t": 0.05,
+   "kind": "sync_mode_restored",
+   "detail": "同步模式已恢复，固定步长 0.0500 s"
+  },
+  {
+   "t": 0.1,
+   "kind": "agent_plan",
+   "detail": "路线计划已装载：263 个航点，541.8 m，终点 road 5 lane 1"
+  },
+  {
+   "t": 131.55,
+   "kind": "ego_arrived",
+   "detail": "主车走完路线计划（剩余航点 0，距终点 1.9 m），停车不算停滞"
+  }
+ ],
+ "event_kinds": [
+  "route_plan",
+  "traffic_spawn",
+  "sync_mode_lost",
+  "traffic_manager",
+  "ego_spawn",
+  "sync_mode_restored",
+  "agent_plan",
+  "ego_arrived"
+ ],
+ "ego_arrived": true,
+ "ego_stalled": false,
+ "planner_fallback": false,
+ "samples_json": "C:\\GameProject\\CarlaUE5\\carla\\Unreal\\CarlaUnreal\\acceptance\\evidence-19\\samples.jsonl"
+}

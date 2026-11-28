@@ -1,0 +1,7 @@
+[
+ {
+  "t": 20.68,
+  "kind": "ego_stalled",
+  "detail": "主车 8 s 未移动（throttle=0.75, brake=0.00, 距终点 154.9 m）"
+ }
+]

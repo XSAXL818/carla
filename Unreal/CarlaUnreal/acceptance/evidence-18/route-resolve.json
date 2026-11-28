@@ -1,0 +1,1401 @@
+{
+ "map_on_server": "Carla/Maps/Town10HD_Opt",
+ "routes_json": "C:\\GameProject\\CarlaUE5\\carla\\Unreal\\CarlaUnreal\\Source\\TestPlatform\\Platform\\backend\\data\\routes\\Town10HD.json",
+ "presets": [
+  {
+   "id": "loop",
+   "waypoints": 18,
+   "resolved": 18,
+   "failed": 0,
+   "non_driving": [],
+   "rows": [
+    {
+     "i": 0,
+     "road_id": 5,
+     "lane_id": -1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -72.2,
+     "y": 132.09
+    },
+    {
+     "i": 1,
+     "road_id": 5,
+     "lane_id": -1,
+     "s": 105.75,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -107.24,
+     "y": 44.9
+    },
+    {
+     "i": 2,
+     "road_id": 735,
+     "lane_id": 1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -110.72,
+     "y": 42.86
+    },
+    {
+     "i": 3,
+     "road_id": 735,
+     "lane_id": 1,
+     "s": 45.15,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -110.23,
+     "y": -1.29
+    },
+    {
+     "i": 4,
+     "road_id": 6,
+     "lane_id": -1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -106.7,
+     "y": -3.25
+    },
+    {
+     "i": 5,
+     "road_id": 6,
+     "lane_id": -1,
+     "s": 84.44,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -68.12,
+     "y": -61.7
+    },
+    {
+     "i": 6,
+     "road_id": 735,
+     "lane_id": 1,
+     "s": 45.15,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -110.23,
+     "y": -1.29
+    },
+    {
+     "i": 7,
+     "road_id": 735,
+     "lane_id": 1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -110.72,
+     "y": 42.86
+    },
+    {
+     "i": 8,
+     "road_id": 5,
+     "lane_id": 1,
+     "s": 105.75,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -110.74,
+     "y": 44.86
+    },
+    {
+     "i": 9,
+     "road_id": 5,
+     "lane_id": 1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -73.06,
+     "y": 135.48
+    },
+    {
+     "i": 10,
+     "road_id": 469,
+     "lane_id": 1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -70.33,
+     "y": 132.52
+    },
+    {
+     "i": 11,
+     "road_id": 469,
+     "lane_id": 1,
+     "s": 36.2,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -48.48,
+     "y": 115.97
+    },
+    {
+     "i": 12,
+     "road_id": 13,
+     "lane_id": -1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -44.99,
+     "y": 113.96
+    },
+    {
+     "i": 13,
+     "road_id": 13,
+     "lane_id": -1,
+     "s": 31.32,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -45.07,
+     "y": 83.64
+    },
+    {
+     "i": 14,
+     "road_id": 469,
+     "lane_id": 1,
+     "s": 36.2,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -48.48,
+     "y": 115.97
+    },
+    {
+     "i": 15,
+     "road_id": 469,
+     "lane_id": 1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -70.33,
+     "y": 132.52
+    },
+    {
+     "i": 16,
+     "road_id": 5,
+     "lane_id": -1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -72.2,
+     "y": 132.09
+    },
+    {
+     "i": 17,
+     "road_id": 5,
+     "lane_id": -1,
+     "s": 105.75,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -107.24,
+     "y": 44.9
+    }
+   ]
+  },
+  {
+   "id": "arterial",
+   "waypoints": 32,
+   "resolved": 32,
+   "failed": 0,
+   "non_driving": [],
+   "rows": [
+    {
+     "i": 0,
+     "road_id": 10,
+     "lane_id": -1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": 106.48,
+     "y": -23.7
+    },
+    {
+     "i": 1,
+     "road_id": 10,
+     "lane_id": -1,
+     "s": 119.4,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": 8.41,
+     "y": -64.4
+    },
+    {
+     "i": 2,
+     "road_id": 17,
+     "lane_id": -1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": 6.42,
+     "y": -64.4
+    },
+    {
+     "i": 3,
+     "road_id": 17,
+     "lane_id": -1,
+     "s": 11.73,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -4.3,
+     "y": -64.54
+    },
+    {
+     "i": 4,
+     "road_id": 7,
+     "lane_id": 1,
+     "s": 21.46,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -6.31,
+     "y": -64.56
+    },
+    {
+     "i": 5,
+     "road_id": 7,
+     "lane_id": 1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -26.76,
+     "y": -64.77
+    },
+    {
+     "i": 6,
+     "road_id": 89,
+     "lane_id": -1,
+     "s": 38.32,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -28.8,
+     "y": -61.29
+    },
+    {
+     "i": 7,
+     "road_id": 89,
+     "lane_id": -1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -66.12,
+     "y": -61.68
+    },
+    {
+     "i": 8,
+     "road_id": 6,
+     "lane_id": 1,
+     "s": 84.44,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -68.08,
+     "y": -65.2
+    },
+    {
+     "i": 9,
+     "road_id": 6,
+     "lane_id": 1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -110.2,
+     "y": -3.29
+    },
+    {
+     "i": 10,
+     "road_id": 735,
+     "lane_id": 1,
+     "s": 45.15,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -110.23,
+     "y": -1.29
+    },
+    {
+     "i": 11,
+     "road_id": 735,
+     "lane_id": 1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -110.72,
+     "y": 42.86
+    },
+    {
+     "i": 12,
+     "road_id": 5,
+     "lane_id": 1,
+     "s": 105.75,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -110.74,
+     "y": 44.86
+    },
+    {
+     "i": 13,
+     "road_id": 5,
+     "lane_id": 1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -73.06,
+     "y": 135.48
+    },
+    {
+     "i": 14,
+     "road_id": 515,
+     "lane_id": -1,
+     "s": 42.19,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -70.33,
+     "y": 132.52
+    },
+    {
+     "i": 15,
+     "road_id": 515,
+     "lane_id": -1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -29.54,
+     "y": 133.53
+    },
+    {
+     "i": 16,
+     "road_id": 4,
+     "lane_id": 1,
+     "s": 27.37,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -27.56,
+     "y": 137.04
+    },
+    {
+     "i": 17,
+     "road_id": 4,
+     "lane_id": 1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -1.19,
+     "y": 137.2
+    },
+    {
+     "i": 18,
+     "road_id": 8,
+     "lane_id": -1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": 0.81,
+     "y": 137.22
+    },
+    {
+     "i": 19,
+     "road_id": 8,
+     "lane_id": -1,
+     "s": 18.54,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": 18.35,
+     "y": 137.45
+    },
+    {
+     "i": 20,
+     "road_id": 1,
+     "lane_id": -1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": 20.35,
+     "y": 137.47
+    },
+    {
+     "i": 21,
+     "road_id": 1,
+     "lane_id": -1,
+     "s": 118.93,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": 105.79,
+     "y": 83.94
+    },
+    {
+     "i": 22,
+     "road_id": 675,
+     "lane_id": -1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": 105.81,
+     "y": 81.94
+    },
+    {
+     "i": 23,
+     "road_id": 675,
+     "lane_id": -1,
+     "s": 28.67,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": 106.0,
+     "y": 54.27
+    },
+    {
+     "i": 24,
+     "road_id": 2,
+     "lane_id": -1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": 106.01,
+     "y": 52.27
+    },
+    {
+     "i": 25,
+     "road_id": 2,
+     "lane_id": -1,
+     "s": 10.08,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": 106.07,
+     "y": 43.19
+    },
+    {
+     "i": 26,
+     "road_id": 565,
+     "lane_id": 1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": 102.59,
+     "y": 41.17
+    },
+    {
+     "i": 27,
+     "road_id": 565,
+     "lane_id": 1,
+     "s": 45.64,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": 102.89,
+     "y": -3.47
+    },
+    {
+     "i": 28,
+     "road_id": 3,
+     "lane_id": -1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": 106.4,
+     "y": -5.45
+    },
+    {
+     "i": 29,
+     "road_id": 3,
+     "lane_id": -1,
+     "s": 3.91,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": 106.42,
+     "y": -8.36
+    },
+    {
+     "i": 30,
+     "road_id": 0,
+     "lane_id": -1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": 106.44,
+     "y": -10.36
+    },
+    {
+     "i": 31,
+     "road_id": 0,
+     "lane_id": -1,
+     "s": 12.31,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": 106.47,
+     "y": -21.66
+    }
+   ]
+  },
+  {
+   "id": "cross",
+   "waypoints": 32,
+   "resolved": 32,
+   "failed": 0,
+   "non_driving": [
+    {
+     "i": 4,
+     "road_id": 769,
+     "lane_id": 1,
+     "s": 1.0,
+     "lane_type": "Sidewalk"
+    },
+    {
+     "i": 5,
+     "road_id": 769,
+     "lane_id": 1,
+     "s": 17.92,
+     "lane_type": "Sidewalk"
+    },
+    {
+     "i": 10,
+     "road_id": 258,
+     "lane_id": 1,
+     "s": 1.0,
+     "lane_type": "Sidewalk"
+    },
+    {
+     "i": 11,
+     "road_id": 258,
+     "lane_id": 1,
+     "s": 16.55,
+     "lane_type": "Sidewalk"
+    },
+    {
+     "i": 14,
+     "road_id": 942,
+     "lane_id": 1,
+     "s": 16.16,
+     "lane_type": "Sidewalk"
+    },
+    {
+     "i": 15,
+     "road_id": 942,
+     "lane_id": 1,
+     "s": 1.0,
+     "lane_type": "Sidewalk"
+    },
+    {
+     "i": 22,
+     "road_id": 718,
+     "lane_id": 1,
+     "s": 1.0,
+     "lane_type": "Sidewalk"
+    },
+    {
+     "i": 23,
+     "road_id": 718,
+     "lane_id": 1,
+     "s": 13.1,
+     "lane_type": "Sidewalk"
+    }
+   ],
+   "rows": [
+    {
+     "i": 0,
+     "road_id": 515,
+     "lane_id": -1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -29.54,
+     "y": 133.53
+    },
+    {
+     "i": 1,
+     "road_id": 515,
+     "lane_id": -1,
+     "s": 42.19,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -70.33,
+     "y": 132.52
+    },
+    {
+     "i": 2,
+     "road_id": 5,
+     "lane_id": -1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -72.2,
+     "y": 132.09
+    },
+    {
+     "i": 3,
+     "road_id": 5,
+     "lane_id": -1,
+     "s": 105.75,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -107.24,
+     "y": 44.9
+    },
+    {
+     "i": 4,
+     "road_id": 769,
+     "lane_id": 1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Sidewalk",
+     "x": -96.34,
+     "y": 43.02
+    },
+    {
+     "i": 5,
+     "road_id": 769,
+     "lane_id": 1,
+     "s": 17.92,
+     "ok": true,
+     "lane_type": "Sidewalk",
+     "x": -89.7,
+     "y": 35.82
+    },
+    {
+     "i": 6,
+     "road_id": 18,
+     "lane_id": -1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -87.68,
+     "y": 24.44
+    },
+    {
+     "i": 7,
+     "road_id": 18,
+     "lane_id": -1,
+     "s": 9.61,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -79.07,
+     "y": 24.46
+    },
+    {
+     "i": 8,
+     "road_id": 19,
+     "lane_id": -1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -77.07,
+     "y": 24.47
+    },
+    {
+     "i": 9,
+     "road_id": 19,
+     "lane_id": -1,
+     "s": 10.24,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -67.83,
+     "y": 24.5
+    },
+    {
+     "i": 10,
+     "road_id": 258,
+     "lane_id": 1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Sidewalk",
+     "x": -65.86,
+     "y": 35.89
+    },
+    {
+     "i": 11,
+     "road_id": 258,
+     "lane_id": 1,
+     "s": 16.55,
+     "ok": true,
+     "lane_type": "Sidewalk",
+     "x": -59.57,
+     "y": 41.59
+    },
+    {
+     "i": 12,
+     "road_id": 14,
+     "lane_id": 1,
+     "s": 8.17,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -48.68,
+     "y": 43.56
+    },
+    {
+     "i": 13,
+     "road_id": 14,
+     "lane_id": 1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -48.66,
+     "y": 50.73
+    },
+    {
+     "i": 14,
+     "road_id": 942,
+     "lane_id": 1,
+     "s": 16.16,
+     "ok": true,
+     "lane_type": "Sidewalk",
+     "x": -34.27,
+     "y": 52.62
+    },
+    {
+     "i": 15,
+     "road_id": 942,
+     "lane_id": 1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Sidewalk",
+     "x": -28.01,
+     "y": 58.33
+    },
+    {
+     "i": 16,
+     "road_id": 12,
+     "lane_id": 1,
+     "s": 53.16,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -26.02,
+     "y": 69.72
+    },
+    {
+     "i": 17,
+     "road_id": 12,
+     "lane_id": 1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": 26.14,
+     "y": 69.78
+    },
+    {
+     "i": 18,
+     "road_id": 150,
+     "lane_id": 1,
+     "s": 29.91,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": 28.14,
+     "y": 69.78
+    },
+    {
+     "i": 19,
+     "road_id": 150,
+     "lane_id": 1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": 57.05,
+     "y": 69.82
+    },
+    {
+     "i": 20,
+     "road_id": 11,
+     "lane_id": 1,
+     "s": 26.93,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": 59.05,
+     "y": 69.82
+    },
+    {
+     "i": 21,
+     "road_id": 11,
+     "lane_id": 1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": 84.98,
+     "y": 69.86
+    },
+    {
+     "i": 22,
+     "road_id": 718,
+     "lane_id": 1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Sidewalk",
+     "x": 86.74,
+     "y": 77.75
+    },
+    {
+     "i": 23,
+     "road_id": 718,
+     "lane_id": 1,
+     "s": 13.1,
+     "ok": true,
+     "lane_type": "Sidewalk",
+     "x": 91.39,
+     "y": 82.26
+    },
+    {
+     "i": 24,
+     "road_id": 1,
+     "lane_id": 1,
+     "s": 118.93,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": 102.29,
+     "y": 83.91
+    },
+    {
+     "i": 25,
+     "road_id": 1,
+     "lane_id": 1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": 20.37,
+     "y": 133.97
+    },
+    {
+     "i": 26,
+     "road_id": 8,
+     "lane_id": 1,
+     "s": 18.54,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": 18.37,
+     "y": 133.95
+    },
+    {
+     "i": 27,
+     "road_id": 8,
+     "lane_id": 1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": 0.83,
+     "y": 133.72
+    },
+    {
+     "i": 28,
+     "road_id": 4,
+     "lane_id": -1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -1.17,
+     "y": 133.7
+    },
+    {
+     "i": 29,
+     "road_id": 4,
+     "lane_id": -1,
+     "s": 27.37,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -27.54,
+     "y": 133.54
+    },
+    {
+     "i": 30,
+     "road_id": 516,
+     "lane_id": 1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -29.56,
+     "y": 137.03
+    },
+    {
+     "i": 31,
+     "road_id": 516,
+     "lane_id": 1,
+     "s": 42.19,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -71.03,
+     "y": 135.95
+    }
+   ]
+  },
+  {
+   "id": "turns",
+   "waypoints": 48,
+   "resolved": 48,
+   "failed": 0,
+   "non_driving": [],
+   "rows": [
+    {
+     "i": 0,
+     "road_id": 565,
+     "lane_id": 1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": 102.59,
+     "y": 41.17
+    },
+    {
+     "i": 1,
+     "road_id": 565,
+     "lane_id": 1,
+     "s": 45.64,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": 102.89,
+     "y": -3.47
+    },
+    {
+     "i": 2,
+     "road_id": 3,
+     "lane_id": 1,
+     "s": 3.91,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": 102.92,
+     "y": -8.38
+    },
+    {
+     "i": 3,
+     "road_id": 3,
+     "lane_id": 1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": 102.9,
+     "y": -5.47
+    },
+    {
+     "i": 4,
+     "road_id": 565,
+     "lane_id": 1,
+     "s": 45.64,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": 102.89,
+     "y": -3.47
+    },
+    {
+     "i": 5,
+     "road_id": 565,
+     "lane_id": 1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": 102.59,
+     "y": 41.17
+    },
+    {
+     "i": 6,
+     "road_id": 2,
+     "lane_id": 1,
+     "s": 10.08,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": 102.57,
+     "y": 43.17
+    },
+    {
+     "i": 7,
+     "road_id": 2,
+     "lane_id": 1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": 102.51,
+     "y": 52.25
+    },
+    {
+     "i": 8,
+     "road_id": 675,
+     "lane_id": -1,
+     "s": 28.67,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": 106.0,
+     "y": 54.27
+    },
+    {
+     "i": 9,
+     "road_id": 675,
+     "lane_id": -1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": 105.81,
+     "y": 81.94
+    },
+    {
+     "i": 10,
+     "road_id": 1,
+     "lane_id": 1,
+     "s": 118.93,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": 102.29,
+     "y": 83.91
+    },
+    {
+     "i": 11,
+     "road_id": 1,
+     "lane_id": 1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": 20.37,
+     "y": 133.97
+    },
+    {
+     "i": 12,
+     "road_id": 8,
+     "lane_id": 1,
+     "s": 18.54,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": 18.37,
+     "y": 133.95
+    },
+    {
+     "i": 13,
+     "road_id": 8,
+     "lane_id": 1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": 0.83,
+     "y": 133.72
+    },
+    {
+     "i": 14,
+     "road_id": 4,
+     "lane_id": -1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -1.17,
+     "y": 133.7
+    },
+    {
+     "i": 15,
+     "road_id": 4,
+     "lane_id": -1,
+     "s": 27.37,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -27.54,
+     "y": 133.54
+    },
+    {
+     "i": 16,
+     "road_id": 515,
+     "lane_id": -1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -29.54,
+     "y": 133.53
+    },
+    {
+     "i": 17,
+     "road_id": 515,
+     "lane_id": -1,
+     "s": 42.19,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -70.33,
+     "y": 132.52
+    },
+    {
+     "i": 18,
+     "road_id": 5,
+     "lane_id": -1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -72.2,
+     "y": 132.09
+    },
+    {
+     "i": 19,
+     "road_id": 5,
+     "lane_id": -1,
+     "s": 105.75,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -107.24,
+     "y": 44.9
+    },
+    {
+     "i": 20,
+     "road_id": 736,
+     "lane_id": -1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -107.22,
+     "y": 42.9
+    },
+    {
+     "i": 21,
+     "road_id": 736,
+     "lane_id": -1,
+     "s": 45.15,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -106.73,
+     "y": -1.25
+    },
+    {
+     "i": 22,
+     "road_id": 6,
+     "lane_id": -1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -106.7,
+     "y": -3.25
+    },
+    {
+     "i": 23,
+     "road_id": 6,
+     "lane_id": -1,
+     "s": 84.44,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -68.12,
+     "y": -61.7
+    },
+    {
+     "i": 24,
+     "road_id": 735,
+     "lane_id": 1,
+     "s": 45.15,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -110.23,
+     "y": -1.29
+    },
+    {
+     "i": 25,
+     "road_id": 735,
+     "lane_id": 1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -110.72,
+     "y": 42.86
+    },
+    {
+     "i": 26,
+     "road_id": 5,
+     "lane_id": 1,
+     "s": 105.75,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -110.74,
+     "y": 44.86
+    },
+    {
+     "i": 27,
+     "road_id": 5,
+     "lane_id": 1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -73.06,
+     "y": 135.48
+    },
+    {
+     "i": 28,
+     "road_id": 515,
+     "lane_id": -1,
+     "s": 42.19,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -70.33,
+     "y": 132.52
+    },
+    {
+     "i": 29,
+     "road_id": 515,
+     "lane_id": -1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -29.54,
+     "y": 133.53
+    },
+    {
+     "i": 30,
+     "road_id": 4,
+     "lane_id": 1,
+     "s": 27.37,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -27.56,
+     "y": 137.04
+    },
+    {
+     "i": 31,
+     "road_id": 4,
+     "lane_id": 1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": -1.19,
+     "y": 137.2
+    },
+    {
+     "i": 32,
+     "road_id": 8,
+     "lane_id": -1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": 0.81,
+     "y": 137.22
+    },
+    {
+     "i": 33,
+     "road_id": 8,
+     "lane_id": -1,
+     "s": 18.54,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": 18.35,
+     "y": 137.45
+    },
+    {
+     "i": 34,
+     "road_id": 1,
+     "lane_id": -1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": 20.35,
+     "y": 137.47
+    },
+    {
+     "i": 35,
+     "road_id": 1,
+     "lane_id": -1,
+     "s": 118.93,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": 105.79,
+     "y": 83.94
+    },
+    {
+     "i": 36,
+     "road_id": 675,
+     "lane_id": -1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": 105.81,
+     "y": 81.94
+    },
+    {
+     "i": 37,
+     "road_id": 675,
+     "lane_id": -1,
+     "s": 28.67,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": 106.0,
+     "y": 54.27
+    },
+    {
+     "i": 38,
+     "road_id": 2,
+     "lane_id": -1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": 106.01,
+     "y": 52.27
+    },
+    {
+     "i": 39,
+     "road_id": 2,
+     "lane_id": -1,
+     "s": 10.08,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": 106.07,
+     "y": 43.19
+    },
+    {
+     "i": 40,
+     "road_id": 566,
+     "lane_id": -1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": 106.09,
+     "y": 41.19
+    },
+    {
+     "i": 41,
+     "road_id": 566,
+     "lane_id": -1,
+     "s": 45.64,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": 106.39,
+     "y": -3.45
+    },
+    {
+     "i": 42,
+     "road_id": 3,
+     "lane_id": -1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": 106.4,
+     "y": -5.45
+    },
+    {
+     "i": 43,
+     "road_id": 3,
+     "lane_id": -1,
+     "s": 3.91,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": 106.42,
+     "y": -8.36
+    },
+    {
+     "i": 44,
+     "road_id": 655,
+     "lane_id": 1,
+     "s": 30.12,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": 99.39,
+     "y": -3.5
+    },
+    {
+     "i": 45,
+     "road_id": 655,
+     "lane_id": 1,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": 84.08,
+     "y": 13.42
+    },
+    {
+     "i": 46,
+     "road_id": 21,
+     "lane_id": 4,
+     "s": 24.63,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": 82.07,
+     "y": 16.91
+    },
+    {
+     "i": 47,
+     "road_id": 21,
+     "lane_id": 4,
+     "s": 1.0,
+     "ok": true,
+     "lane_type": "Driving",
+     "x": 58.44,
+     "y": 16.85
+    }
+   ]
+  }
+ ],
+ "total_resolved": 130,
+ "total_failed": 0
+}

@@ -1,0 +1,16 @@
+{
+ "session_id": "20261128-110612-9f95f1",
+ "map": "Town10HD",
+ "state": "stopped",
+ "duration_s": 43.73,
+ "ticks": 869,
+ "samples": 433,
+ "speed_kmh": {
+  "avg": 6.0,
+  "max": 26.7
+ },
+ "events": 1,
+ "sync_lost": false,
+ "sync_lost_at_s": null,
+ "wall_clock_s": 47.19
+}
