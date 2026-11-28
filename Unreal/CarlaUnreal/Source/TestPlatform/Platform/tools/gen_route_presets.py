@@ -9,11 +9,18 @@ can be replayed by the backend without re-planning:
     grp = GlobalRoutePlanner(world.get_map(), 2.0)
     plan = grp.trace_route(wp0, wpN)          # validated at runtime
 
-Presets are *suggestions*: they are derived from the road/junction graph with a
-deliberately permissive topology (peer links are treated as traversable in both
-directions, lane-level connectivity is ignored).  The backend re-validates and
-re-plans them on the live map before the run starts, and drops a preset that no
-longer resolves.
+The graph is **direction-strict**: OpenDRIVE links peer roads in both directions,
+but a road can only be driven the way its lanes point.  Right-hand traffic puts
+the lanes travelling along +s on the right of the reference line (negative lane
+ids) and the lanes travelling along -s on the left (positive ids), so a
+``(road, dir)`` node only exists when the road really has a ``driving`` lane on
+that side.  Without this the presets asked the ego to drive junction connectors
+and whole roads the wrong way -- the map has no driving lane there at all, only
+``shoulder``/``sidewalk``, and the ego was spawned facing backwards.
+
+The backend turns a preset into a ``[(carla.Waypoint, RoadOption)]`` plan on the
+live map (``session_runner._build_plan()``) and the agent follows exactly that
+plan, so what the generator emits here is what the car drives.
 
 Preset kinds, one of each per map:
 
@@ -36,13 +43,17 @@ import sys
 import xml.etree.ElementTree as ET
 from collections import defaultdict, deque
 
-# Fallback only: a literal ``lane_id`` that does not exist on a road makes
-# ``map.get_waypoint_xodr(road, lane, s)`` return None, so every waypoint below
-# carries a lane id that the .xodr really has at that s. ``-1`` survives as the
-# "any driving lane" sentinel only for roads whose lane sections we cannot read.
-LANE_ID = -1
+# ``lane_id = 0`` is the "any driving lane" sentinel: OpenDRIVE lane 0 is the
+# reference line and is never a drivable lane, so it cannot collide with a real
+# id. It used to be -1, which in this map is a perfectly ordinary lane (the
+# right-hand lane travelling along +s) -- a stored -1 therefore meant "right
+# lane" to the generator and "probe from the left lane first" to the backend,
+# which is how the ego ended up spawned on the opposite carriageway. Every
+# waypoint now carries a lane id that the .xodr really has at that ``s``, is
+# ``driving``, and points the way the route travels; 0 only survives for roads
+# whose lane sections cannot be read at all.
+LANE_ID = 0
 S_MARGIN = 1.0  # keep waypoints off the exact road ends
-
 
 # --------------------------------------------------------------------------- #
 # OpenDRIVE parsing
@@ -57,7 +68,7 @@ def parse_xodr(path: str):
     """
     roads: dict[int, float] = {}
     links: dict[int, dict[str, tuple[str, str, str]]] = {}
-    junctions: dict[int, list[tuple[int, str, int]]] = defaultdict(list)
+    junctions: dict[int, list[tuple[int, str, int, int]]] = defaultdict(list)
     lane_sections: dict[int, list[tuple[float, dict[int, str]]]] = {}
 
     for _event, el in ET.iterparse(path, events=("end",)):
@@ -108,7 +119,20 @@ def parse_xodr(path: str):
                 except (TypeError, ValueError):
                     continue
                 cp = conn.get("contactPoint") or "start"
-                junctions[inc].append((con, cp, int(conn.get("id") or -1)))
+                # Which end of the *incoming* road feeds this connection is not
+                # in the connection attributes -- it is in its laneLinks. A
+                # from-lane id < 0 travels along +s, so the connection leaves the
+                # incoming road at its end; from-lane > 0 leaves at its start.
+                # Assuming "always leaves at the end" made 42 of this map's 85
+                # connections traverse the incoming road the wrong way, which is
+                # why the backend's trace_route had to detour hundreds of metres
+                # around junctions that are actually one-way.
+                inc_dirs = {1 if int(link.get("from") or 0) < 0 else -1
+                            for link in conn.findall("laneLink")
+                            if (link.get("from") or "").lstrip("-").isdigit()
+                            and int(link.get("from") or 0) != 0}
+                for inc_dir in (sorted(inc_dirs) or [1]):
+                    junctions[inc].append((con, cp, int(conn.get("id") or -1), inc_dir))
             el.clear()
 
     return roads, links, junctions, lane_sections
@@ -154,12 +178,49 @@ def build_graph(roads, links, junctions):
             add((nid, -nd), (rid, -out_dir), "link")
 
     for inc, conns in junctions.items():
-        for con, cp, jid in conns:
+        for con, cp, jid, inc_dir in conns:
             nd = entry_dir(cp)
-            add((inc, 1), (con, nd), "junction", jid)
-            add((con, -nd), (inc, -1), "junction", jid)
+            # The connection is only valid when the incoming road is being
+            # traversed *towards* the end that feeds it, and when the connecting
+            # road can be entered in the direction it is joined.
+            add((inc, inc_dir), (con, nd), "junction", jid)
+            add((con, -nd), (inc, -inc_dir), "junction", jid)
 
     return adj
+
+
+def drivable_dirs(lane_sections) -> dict[int, set[int]]:
+    """{road_id: {+1, -1}} -- the s-directions that road really has lanes for.
+
+    OpenDRIVE links two roads to each other in *both* directions, which says the
+    topology is connected, not that either direction is legal. Right-hand
+    traffic: lane id < 0 lies right of the reference line and travels +s, lane
+    id > 0 lies left and travels -s. A direction with no ``driving`` lane on its
+    side has no drivable lane at all (junction connectors often carry only
+    ``shoulder``/``sidewalk``), so asking the ego to traverse it is asking it to
+    drive the wrong way down a one-way stub.
+    """
+    out: dict[int, set[int]] = {}
+    for rid, sections in lane_sections.items():
+        dirs: set[int] = set()
+        for _s0, table in sections:
+            for lid, kind in table.items():
+                if kind == "driving":
+                    dirs.add(1 if lid < 0 else -1)
+        out[rid] = dirs
+    return out
+
+
+def prune_graph(adj, dirs):
+    """Drop every (road, dir) node and edge the road cannot legally be driven."""
+    pruned = defaultdict(list)
+    for src, edges in adj.items():
+        if src[1] not in dirs.get(src[0], ()):
+            continue
+        for dst, kind, jid in edges:
+            if dst[1] in dirs.get(dst[0], ()):
+                pruned[src].append((dst, kind, jid))
+    return pruned
 
 
 def neighbours(adj, node):
@@ -331,14 +392,21 @@ def preset_turns(adj, roads, target_m=1800.0, min_turns=5, min_m=900.0):
 # Serialisation
 # --------------------------------------------------------------------------- #
 def lane_at(lane_sections, rid, s, direction):
-    """A driving lane id that exists on ``rid`` at ``s`` (None when unknown).
+    """The driving lane id that travels ``direction`` on ``rid`` at ``s``.
 
     Right-hand traffic: travelling with +s uses the right side of the reference
     line (negative OpenDRIVE ids), travelling with -s the left side (positive
-    ids); the lane closest to the centre line wins. This is what makes every
-    emitted waypoint resolvable with a plain ``get_waypoint_xodr(road, lane, s)``
-    -- the old fixed ``lane_id = -1`` silently failed on junction connecting
-    roads, which may carry only positive lane ids.
+    ids); the lane closest to the centre line wins. Returns ``None`` when the
+    road has no ``driving`` lane on that side at that ``s`` -- the caller then
+    stores the sentinel, and the backend resolves it against the live map.
+
+    The previous version fell back to "any non-zero lane" when no driving lane
+    was found, which is how the ``cross`` preset came to carry ``lane_id = 1``
+    on junction connectors whose only lanes are ``shoulder`` and ``sidewalk``:
+    the overlay dipped onto the kerb, and a car told to follow that plan would
+    have driven on the pavement. No driving lane on the correct side means the
+    traversal is not drivable, and the graph pruner keeps such roads out of the
+    route in the first place.
     """
     sections = lane_sections.get(rid) or []
     if not sections:
@@ -349,17 +417,11 @@ def lane_at(lane_sections, rid, s, direction):
             table = candidate
         else:
             break
-    driving = [lid for lid, kind in table.items() if kind == "driving"]
-    if not driving:
-        driving = [lid for lid in table if lid != 0]
+    driving = [lid for lid, kind in table.items()
+               if kind == "driving" and (lid < 0) == (direction > 0)]
     if not driving:
         return None
-
-    def rank(lid):
-        right_side = lid < 0
-        return (0 if right_side == (direction > 0) else 1, abs(lid), lid)
-
-    return min(driving, key=rank)
+    return min(driving, key=lambda lid: (abs(lid), lid))
 
 
 def to_waypoints(roads, path, lane_sections):
@@ -402,6 +464,11 @@ def build_presets(roads, adj, lane_sections):
     attempts = {
         "loop": [
             lambda: preset_loop(adj, roads),
+            # A direction-strict graph is much smaller than the permissive one
+            # (Town10HD: 231 of 546 edges), so the 9-hop cycle search that used
+            # to find the 498 m ring finds nothing; one more hop still lands
+            # inside the 400-1400 m band with a real, drivable cycle.
+            lambda: preset_loop(adj, roads, max_hops=12),
             lambda: preset_loop_relaxed(adj, roads),
         ],
         "arterial": [
@@ -488,7 +555,21 @@ def main(argv=None):
     xodrs.sort()
 
     os.makedirs(args.out, exist_ok=True)
+    # Merge into the existing index instead of replacing it: --limit is for
+    # regenerating one map, and starting from an empty index made a single-map
+    # run delete the other fourteen maps from index.json (the map picker reads
+    # it, so the UI silently dropped to one map).
+    index_path = os.path.join(args.out, "index.json")
     index = {"source": "OpenDRIVE", "maps": {}}
+    if os.path.isfile(index_path):
+        try:
+            with open(index_path, encoding="utf-8") as fh:
+                existing = json.load(fh)
+            if isinstance(existing.get("maps"), dict):
+                index["source"] = existing.get("source", index["source"])
+                index["maps"] = existing["maps"]
+        except (OSError, ValueError):
+            pass  # unreadable index: rebuild it from what this run produces
     print(f"{'map':<12}{'roads':>7}{'junc':>6}  presets")
     print("-" * 78)
 
@@ -501,7 +582,8 @@ def main(argv=None):
         if not roads:
             print(f"{map_name:<12}  no roads")
             continue
-        adj = build_graph(roads, links, junctions)
+        adj = prune_graph(build_graph(roads, links, junctions),
+                          drivable_dirs(lane_sections))
         presets = build_presets(roads, adj, lane_sections)
         entry = {
             "map": map_name,
@@ -530,10 +612,10 @@ def main(argv=None):
         )
         print(f"{map_name:<12}{len(roads):>7}{len(junctions):>6}  {summary or 'none'}")
 
-    with open(os.path.join(args.out, "index.json"), "w", encoding="utf-8") as fh:
+    with open(index_path, "w", encoding="utf-8") as fh:
         json.dump(index, fh, ensure_ascii=False, indent=1)
     print("-" * 78)
-    print(f"written to {args.out}")
+    print(f"written to {args.out} ({len(index['maps'])} maps in index.json)")
     return 0
 
 

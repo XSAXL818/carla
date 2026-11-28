@@ -173,6 +173,22 @@ def session_events(session_id: str):
     return {"events": session.events, "count": len(session.events)}
 
 
+@router.get("/{session_id}/plan.json")
+def session_plan(session_id: str):
+    """The route plan the agent is following, as plain waypoint data.
+
+    Same surface as the events: what the run committed to, readable without
+    touching the simulator, so a check can measure the drive against the plan
+    instead of against the preset's control points.
+    """
+    try:
+        session = session_runner.manager.get(session_id)
+    except session_runner.SessionError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return {"session_id": session.id, "stats": session._plan_stats,
+            "points": session.plan_polyline()}
+
+
 @router.get("/{session_id}/rec.log")
 def session_recorder(session_id: str):
     try:

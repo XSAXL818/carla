@@ -266,8 +266,8 @@
     {
      "id": "loop",
      "name": "城市环线",
-     "length_km": 0.5,
-     "waypoints": 18
+     "length_km": 0.4,
+     "waypoints": 24
     },
     {
      "id": "arterial",
@@ -278,13 +278,13 @@
     {
      "id": "cross",
      "name": "跨图长途",
-     "length_km": 0.53,
-     "waypoints": 32
+     "length_km": 0.75,
+     "waypoints": 48
     },
     {
      "id": "turns",
      "name": "路口穿行",
-     "length_km": 1.05,
+     "length_km": 0.91,
      "waypoints": 48
     }
    ]

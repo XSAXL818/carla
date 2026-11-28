@@ -69,6 +69,7 @@
 | GET | `/sessions/{id}/summary` | 内联返回 `summary.json` 的内容（JSON 响应，不是文件下载） |
 | GET | `/sessions/{id}/metrics.csv` | 下载 `metrics.csv` |
 | GET | `/sessions/{id}/events.json` | 事件数组 + 计数 |
+| GET | `/sessions/{id}/plan.json` | 主车正在执行的路点计划（`x/y/road_id/lane_id/s/lane_type/option`）+ 段数统计 |
 | GET | `/sessions/{id}/rec.log` | 下载 CARLA recorder 文件 |
 | GET | `/sessions/{id}/presets` | 该会话地图的路线预设 |
 
@@ -198,12 +199,34 @@
   依次途经 9/18/19/24 段路，即 8/17/18/23 次换路（不是 9/18/19/24 次）。
 
 - **路点解析**：`_resolve_route()` 只负责挑预设 / 收自定义路点并校验条数，不碰坐标；坐标在用到时才逐点调
-  `map.get_waypoint_xodr(road_id, lane_id, s)`（`_waypoint_at()`，`lane_id` 为 -1 时依次试候选车道并优先
-  `LaneType.Driving`）。**只有首尾解析失败会报错**：起点在 `_spawn_ego()`、终点在 `_build_agent()`；
-  中间路点解析不到会被静默丢弃 —— `_cache_route_points()` 只把解析成功的点收进画线缓存，不影响运行。
-  不做整段连通性校验。
+  `map.get_waypoint_xodr(road_id, lane_id, s)`（`_waypoint_at()`）。**解析按行驶方向来**：每个路点的行进方向由
+  同一路段上的相邻路点推出（`_waypoint_spec_travel_sign()`），只有 `LaneType.Driving` 且车道朝向与行进方向一致的
+  车道才会被接受；存了具体 `lane_id` 时也照样校验（`-1` 在本图是真实车道，同时又是老预设文件里的“任意车道”
+  哨兵，只能靠方向区分）。解析不到就返回 None 而不是退回“任意车道”，由调用方决定是致命（首尾）还是跳过。
+- **路线计划由预设生成，不是由终点生成**：`_build_plan()` 逐段填充相邻预设路点之间的空隙——两端在同一车道时
+  直接沿该车道 `next()` 走（那就是几何本身），换路时用 `GlobalRoutePlanner.trace_route()`（保证计划留在预设
+  经过的路上）。`trace_route()` 的入参是**位置**，它用 `map.get_waypoint()` 取最近车道；路口连接路在空间上互相
+  重叠，152 个 Town10HD 预设路点里有 11 个会被定位到别的路上、从而绕行数百米，所以锚点先用 `_relocalize()`
+  沿目标车道挪到能被正确解析的位置。结果去重后由 `_label_road_options()` 给每个点标 `RoadOption`：
+  `trace_route()` 自己的标签描述的是它那趟 A* 路径并带跨调用状态（`_previous_decision`），拼接出来的计划不是
+  那条路径，标签会错在最关键的地方；因此改从计划几何本身量（前后各约 10 m 的航向差，叉积定左右），阈值沿用
+  agent 库自己的 35°，且只在路口附近给 LEFT/RIGHT——单纯的车道弯曲不是转向指令，否则 `BehaviorAgent` 会在每个
+  弯减速。**`set_destination()` 不再被调用**：它内部就是从当前位置重新规划到单点，预设的中间路点因此被丢弃
+  （旧行为：主车为到达 94 m 外的终点跑了 494.6 m）。
+- **主车出生位姿来自计划**：`_spawn_ego()` 直接把车放在计划的第一个路点上、朝向计划首段（`_plan_heading_at_start()`，
+  4 m 基线算方位角）；地图出生点只在计划起点被静态几何挡住、生成失败时作为退路，且仍然改成计划朝向。
+- **叠加线画的就是计划**：`_cache_route_points()` 取 `_plan` 的坐标，所以画面上的线与车实际走的是同一串点
+  （旧行为：画预设的 18 个控制点，车自己另规划，只有约 20% 的行驶落在 3 m 内）。
 - **自定义**：后端接受 `route.source=custom` + 至少 2 个 waypoints；界面的自定义路线入口是禁用占位，
   未接入表格编辑或导入/导出。
+- **`GET /sessions/{id}/plan.json`**：把计划按 `(x, y, road_id, lane_id, s, lane_type, option)` 导出，供外部对照
+  测量；`/sessions/current` 的 `route.plan` 只给点数、长度、段数与失败数，`route.spawn` 给实测出生位姿。
+- **预设生成器**：`tools/gen_route_presets.py` 的图是**方向严格**的——OpenDRIVE 的 link 是双向拓扑，不代表两个方向
+  都能开。`drivable_dirs()` 只承认真的有 `driving` 车道的那一侧（右侧通行：id<0 走 +s，id>0 走 -s），
+  `prune_graph()` 把其余 `(road, dir)` 节点和边全部删掉（Town10HD：546 条边留 231 条）。路口连接的方向从
+  `laneLink` 的 `from` 车道号推出（`from<0` 表示从入路的末端驶出）——85 条连接里有 42 条是这样，而旧代码一律
+  当作“从末端驶出”，这是 trace_route 需要绕行数百米的根因。`--limit` 现在**合并**进已有的 `index.json`，
+  不再用单图结果覆盖整份索引。
 
 ## 7. 交通与天气
 
@@ -289,7 +312,7 @@ UE 侧 C++ 负责：把 Slate 面板挂到 game viewport、按后端状态驱动
 - **平台资产的家**：`Content/TestPlatform/`。入口地图是 `Content/TestPlatform/Maps/L_TestPlatformEntry.umap`，一个**空壳**：只有 1 个 `PlayerStart`，没有城市几何。配置界面中央的 3D 城市不是这张图的一部分 —— 后端 `POST /sessions/preview_map` 用 `client.load_world` 把选中的城镇加载进**同一个进程**，面板是盖在那张城镇上的。
 - **入口图的 OpenDrive**：空壳不等于无图。`Content/TestPlatform/Maps/OpenDrive/L_TestPlatformEntry.xodr` 是一份只有 header、零条 road 的合法 OpenDRIVE（与 `EmptyMap.xodr` 同构），CARLA 的 `ACarlaGameModeBase::ParseOpenDrive` 因此建出一张空 Map：启动日志不再出现 `LogCarla: Error: No OpenDrive file found for map 'L_TestPlatformEntry'` 与 `LogCarla: Error: Invalid Map`，后端 `world.get_map()` 也不再吐出 `ERROR: unable to parse the OpenDRIVE XML string`。真正的坏图照旧报错：把这份 xodr 临时移走（缺失）或换成非法 XML（解析失败）仍会得到同样的两条 `LogCarla: Error`。`session_runner.py` 里对 `get_map()` 的 `RuntimeError` 兜底保留，用于 CARLA 世界里任何其它无 xodr 的关卡。
 - **默认地图**：`Config/DefaultEngine.ini` 的 `GameDefaultMap` 与 `EditorStartupMap` 都是 `/Game/TestPlatform/Maps/L_TestPlatformEntry.L_TestPlatformEntry`，所以每次启动都落在配置界面。`ServerDefaultMap` 仍是 Town10HD：它只管 `-server`，与配置界面无关。`GlobalDefaultGameMode`（`CarlaGameMode`）不变 —— 空壳地图同样要由它起 CARLA 的 world/RPC 服务，已用真实 `-game` 运行验证（2000 端口监听、`carla.Client` 能连、`preview_map` 能 load_world）。
-- **白名单**：`UTestPlatformSettings::EntryMaps`，落在 `Config/DefaultGame.ini` 的 `[/Script/TestPlatform.TestPlatformSettings]`（编辑器里是 Project Settings > Game > Test Platform）。条目可以写完整包路径（`/Game/TestPlatform/Maps/L_TestPlatformEntry`）或短地图名（`L_TestPlatformEntry`），PIE 前缀忽略；列表为空时回退到同一个入口地图。别的图（Town05 等）不再显示面板，浏览地图是干净的。白名单在模块启动时读一次，改动要重启进程。
+- **白名单**：`UTestPlatformSettings::EntryMaps`，落在 `Config/DefaultGame.ini` 的 `[/Script/TestPlatform.TestPlatformSettings]`（编辑器里是 Project Settings > Game > Test Platform）。条目可以写完整包路径（`/Game/TestPlatform/Maps/L_TestPlatformEntry`）或短地图名（`L_TestPlatformEntry`）；比较前会剥掉包路径**最后一段**上的 PIE 实例前缀 `UEDPIE_<n>_`（PIE 世界包的 `GetName()` 是 `/Game/TestPlatform/Maps/UEDPIE_0_L_TestPlatformEntry`，前缀在路径中间而不是开头，只在最后一段识别才不会误伤名字里带 `UEDPIE_` 的目录，也不会动本来就叫 `L_TestPlatformEntry` 的图）；列表为空时回退到同一个入口地图。别的图（Town05 等）不再显示面板，浏览地图是干净的。白名单在模块启动时读一次，改动要重启进程。
 - **闸门判定的是"本次运行从哪张图启动"，不是"当前地图"**：每个 game/PIE 会话只在第一个运行时世界判定一次 —— 那张图在白名单里就把面板闩上（`bEntryMapArmed`），不在就永远不开。闩上之后只有一种世界切换保留面板：**面板自己请求的后端预览加载**（面板选图 → `PreviewMap` → 后端 `client.load_world`）。模块在 `STestPlatformUI::OnPreviewRequest` 里记下目标图，只有落到那张图（忽略 `_Opt` 后缀与大小写）的切换才算预览，所以入口图 → 城镇时面板不会被藏掉。其余任何世界切换（别的客户端 `load_world`、手动切图）都算"离开入口流程"：闩锁当场解除、面板移除，本次运行不再重新闩上 —— 从 Town05 启动的进程后来 `load_world` 到入口图也不会弹面板。日志据此核对：判定一次时的 `panel gate: run started on <包路径>: <armed|stays off>`、解除时的 `panel gate: left the entry flow: world changed <旧图> -> <新图> without a panel-requested preview`，以及每次地图变化一行 `map <包路径>: config panel enabled|disabled (<原因>)`，原因写的是真实依据（`entry map` / `backend preview load in a run that started on an entry map` / `this run started on <包路径>, which is not an entry map` 等）。
 - **会话结束即重置**：`TickRuntime` 发现 game viewport 不存在（编辑器空闲、PIE 结束）时调用 `ResetGateForNewSession()`，清掉启动图、闩锁、手动覆盖和预览目标，并把面板与 viewport 的绑定复位。因此一次从入口图启动的 PIE 不会把面板闩给同一编辑器进程里的下一次 PIE；下一次 PIE 按它自己的启动图重新判定。（该路径由代码与一次 `-game` 进程内不复用会话的实测支撑；PIE 本身按约束没有运行。）
 - **两种显式覆盖**：命令行 `-TestPlatformForceUI` 无视白名单强制显示（自动化用，等价于"永远允许"）；控制台 `TestPlatform.Panel 1` 是手动覆盖（`Panel 0` 把控制权交回闸门）。两者都不写闩锁：`Panel 0` 之后仍按上面的规则判定，自动路径永远不会在非入口地图里显示面板。
@@ -382,17 +405,18 @@ Source/TestPlatform/
 - 配置页可加载、默认地图 Town10HD、9 图 × 4 条预设与 18 个车型的缩略图可用；
 - 后端在模拟器未启动时仍可服务（`/health` 200，`carla.connected:false`），配置类接口不受影响；
 - 模块在 Editor / Game 两个 target 下均可编译并用无头方式验证过；
-- 面板状态（已连接 / 未连接 / 未知）、探测地址、加载期行为均有截图与原始日志证据（见 `acceptance/`）。
+- 面板状态（已连接 / 未连接 / 未知）、探测地址、加载期行为均有截图与原始日志证据（见 `acceptance/`）；
+- **主车按配置的路线预设行驶**（Town10HD、`loop`，真实 `-game` 会话）：计划 263 点 / 541.8 m，出生位姿在计划
+  第一个路点上（0.01 m）且朝向计划首段（偏差 0.01°），1075 个采样点 **100%** 落在计划折线 3 m 内（1 m 内 94%），
+  实际行驶 514.8 m，`ego_arrived` 正常报出、无 `ego_stalled`、无 `planner_fallback`。证据
+  `acceptance/evidence-19/`（`measure-loop-final.json`、`shots/`）。
 
-**未验证（尚未有任何一次真实运行）**：
+**未验证**：
 
-- **Town10HD 上主车是否真的行驶**：`POST /sessions/{id}/start` 之后 `BehaviorAgent` 是否接管、速度与轨迹是否合理——**从未端到端跑过**；
-- 路线预设叠加与主车实际轨迹是否一致；
-- `ego_stalled` 是否会在真实运行中触发、以及是否显示到面板；
-- `metrics.csv` / `events.json` / `summary` 在一次真实运行后能否导出可用数据（端点存在，但没跑过真实会话）；
-- 录制文件 `rec.log` 能否用于回放。
-
-**下一步（建议顺序）**：启动后端（8765）→ 启动编辑器 `-game`（该进程自身即 CARLA RPC 服务，监听 2000）→ `preview_map(Town10HD)` → `start` → 采样 60 s 的速度/位置/会话状态 → 抓俯视跟随与面板状态图 → 检查导出产物 → 关闭并清理。一次运行即可覆盖上面四项。
+- 其余 8 张界面地图的主车行驶（范围只对 Town10HD 负责，见上）；
+- `arterial` / `cross` / `turns` 三条预设的**实车**行驶（计划构建已逐条验证：0 失败、全部 Driving 车道、
+  0 非行驶车道、0 逆行路点，但没有各跑一遍）；
+- `rec.log` 回放。
 
 ## 15. UI 迭代策略：迁往 UMG（已决定，待执行）
 

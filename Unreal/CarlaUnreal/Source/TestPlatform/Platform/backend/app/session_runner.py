@@ -44,6 +44,13 @@ ARRIVAL_RADIUS_M = 12.0
 # Background traffic: keep the ego's spawn clear and spread the cars out.
 TRAFFIC_EGO_CLEARANCE_M = 25.0
 TRAFFIC_MIN_GAP_M = 25.0
+# Plan building: step used to walk a lane, and the lookahead over which the turn
+# at a waypoint is measured (both metres). TURN_THRESHOLD_DEG is the agent
+# library's own threshold (local_planner._compute_connection), so the RoadOption
+# values mean what BasicAgent/BehaviorAgent already expect.
+PLAN_SAMPLING_M = 2.0
+PLAN_TURN_LOOKAHEAD_M = 10.0
+TURN_THRESHOLD_DEG = 35.0
 
 
 def _carla():
@@ -104,6 +111,16 @@ class Session:
         self.show_route = bool(config.get("run", {}).get("show_route", True))
         self._route_points: list = []
         self._route_color = None
+        # The plan the agent actually follows, and the polyline drawn for it:
+        # the overlay has to show what the car drives, not the preset's control
+        # points (those are a subset of the plan now, so the drawn line is the
+        # plan itself).
+        self._plan: list = []
+        self._plan_stats: dict = {}
+        self.spawn_pose: dict | None = None
+        self._spawn_request_location = None
+        self._spawn_source = None
+        self._grp = None
         # What the simulator confirmed about the clock. `_fixed_delta` is the
         # last delta it really ran at, so losing synchronous mode degrades the
         # metrics to "last known delta" instead of killing the loop with a
@@ -311,38 +328,369 @@ class Session:
             current = following[0] if following else None
         return waypoint
 
-    def _waypoint_at(self, road_id: int, lane_id: int, s: float):
-        """Resolve a (road, lane, s) tuple onto a *drivable* lane.
+    @staticmethod
+    def _lane_travel_sign(lane_id: int) -> int:
+        """+1 when this lane travels along increasing ``s``, -1 when decreasing.
 
-        Our presets emit ``lane_id = -1`` meaning "any driving lane", and CARLA's
-        ``get_waypoint_xodr`` rejects that. Probing in order can also land on a
-        shoulder or parking lane, where the ego gets stuck against the kerb, so
-        prefer ``LaneType.Driving`` and only fall back to whatever exists.
+        Right-hand traffic in OpenDRIVE: lanes with a negative id lie right of
+        the reference line and travel +s, positive ids lie left and travel -s.
+        Verified on the live Town10HD map: road 5 lane -1 at s 2->8 bears 199.7
+        deg, which matches its own yaw (-164.4); lane 1 of the same road bears
+        the same 199.7 but its yaw is 15.6, i.e. it faces the other way.
+        """
+        return 1 if lane_id < 0 else -1
+
+    def _waypoint_at(self, road_id: int, lane_id: int, s: float,
+                     travel_sign: int | None = None):
+        """Resolve a (road, lane, s) tuple onto a *driving* lane.
+
+        ``travel_sign`` (+1/-1) says which way along the road the route goes
+        through this point. A concrete lane id is used verbatim when it really is
+        a driving lane travelling that way -- the generator already picked one.
+        It is *not* trusted blindly: ``-1`` is a legitimate lane here (the right
+        lane travelling +s) and it is also the "any driving lane" sentinel older
+        preset files still carry, so the direction check is what tells the two
+        apart. Anything that fails it -- the sentinel, a non-driving lane, or a
+        lane pointing the wrong way -- falls back to a direction-aware probe.
+        Returns None when nothing drivable matches, so the caller can decide
+        whether that is fatal (start/end) or skippable.
+
+        The old version took the first Driving lane in a fixed probe order and
+        fell back to *any* lane, which is how the ``loop`` preset's first
+        waypoint resolved to the opposite carriageway (spawn facing backwards)
+        and the ``cross`` preset resolved onto ``shoulder``/``sidewalk`` lanes.
         """
         carla = _carla()
-        lanes = [lane_id] if lane_id not in (None, 0, -1) else [1, 2, 3, 4, 5, 6,
-                                                               -1, -2, -3, -4, -5, -6]
-        fallback = None
-        for lane in lanes:
+        if lane_id not in (None, 0):
+            try:
+                waypoint = self.map.get_waypoint_xodr(road_id, lane_id, s)
+            except Exception:  # noqa: BLE001
+                waypoint = None
+            if waypoint is not None and waypoint.lane_type == carla.LaneType.Driving:
+                if travel_sign is None or self._lane_travel_sign(
+                        waypoint.lane_id) == travel_sign:
+                    return waypoint
+
+        found = []
+        for lane in (1, 2, 3, 4, 5, 6, -1, -2, -3, -4, -5, -6):
             try:
                 waypoint = self.map.get_waypoint_xodr(road_id, lane, s)
             except Exception:  # noqa: BLE001
                 waypoint = None
-            if waypoint is None:
+            if waypoint is None or waypoint.lane_type != carla.LaneType.Driving:
                 continue
-            if waypoint.lane_type == carla.LaneType.Driving:
-                return waypoint
-            if fallback is None:
-                fallback = waypoint
-        return fallback
+            if travel_sign is not None and self._lane_travel_sign(
+                    waypoint.lane_id) != travel_sign:
+                continue
+            found.append(waypoint)
+        if found:
+            return found[0]
+        # No driving lane on the requested side. Rather than hand the car a lane
+        # that points the wrong way (the original defect), report "unresolvable"
+        # and let the caller skip the point.
+        return None
+
+    def _waypoint_spec_travel_sign(self, index: int) -> int | None:
+        """Which way the preset travels through ``self.route_waypoints[index]``.
+
+        Taken from the neighbouring waypoint on the same road: a positive delta
+        in ``s`` towards that neighbour means the route goes along +s there, and
+        the neighbour's own ``s`` has to be subtracted in the right order (an
+        entry point is followed by the exit, an exit point follows the entry).
+        Without such a neighbour (a road visited only once, one point) the
+        direction is unknown and the caller passes None.
+        """
+        specs = self.route_waypoints
+        if not 0 <= index < len(specs):
+            return None
+        spec = specs[index]
+        road_id = int(spec["road_id"])
+        s = float(spec["s"])
+        for other, towards_next in (
+                (specs[index + 1] if index + 1 < len(specs) else None, True),
+                (specs[index - 1] if index else None, False)):
+            if other is None or int(other["road_id"]) != road_id:
+                continue
+            # towards the next waypoint: s grows (or shrinks) as we leave here
+            delta = (float(other["s"]) - s) if towards_next else (s - float(other["s"]))
+            if abs(delta) > 1e-6:
+                return 1 if delta > 0 else -1
+        return None
+
+    def _resolve_route_waypoints(self) -> list:
+        """Every preset waypoint as a carla.Waypoint on a driving lane, in order."""
+        resolved = []
+        for i, spec in enumerate(self.route_waypoints):
+            waypoint = self._waypoint_at(int(spec["road_id"]), int(spec["lane_id"]),
+                                         float(spec["s"]),
+                                         self._waypoint_spec_travel_sign(i))
+            resolved.append(waypoint)
+        return resolved
+
+    # ------------------------------------------------------------------ #
+    # plan building
+    # ------------------------------------------------------------------ #
+    def _import_agents(self, module: str, name: str):
+        """Import a navigation agent module from the CARLA checkout.
+
+        The pip wheel's ``carla`` is a bare extension module (``carla.agents``
+        does not exist), and this machine's site-packages has an *unrelated*
+        ``agents`` package that imports tensorflow and dies. So the checkout's
+        ``PythonAPI/carla`` has to be ahead of site-packages on sys.path *before*
+        the first ``agents`` import anywhere in the process -- the path insert
+        used to live only in ``_build_agent()``, which is late enough that an
+        earlier import could poison ``sys.modules['agents']``.
+        """
+        import sys  # noqa: PLC0415
+
+        checkout = str(paths.PYTHON_API_CARLA)
+        if paths.PYTHON_API_CARLA.is_dir() and sys.path[:1] != [checkout]:
+            sys.path.insert(0, checkout)
+        import importlib  # noqa: PLC0415
+
+        return getattr(importlib.import_module(module), name)
+
+    def _road_option_enum(self):
+        return self._import_agents("agents.navigation.local_planner", "RoadOption")
+
+    def _global_planner(self):
+        """A GlobalRoutePlanner over this session's map, built once."""
+        if getattr(self, "_grp", None) is None:
+            GlobalRoutePlanner = self._import_agents(
+                "agents.navigation.global_route_planner", "GlobalRoutePlanner")
+            self._grp = GlobalRoutePlanner(self.map, PLAN_SAMPLING_M)
+        return self._grp
+
+    def _relocalize(self, waypoint):
+        """A location on ``waypoint``'s own lane that ``map.get_waypoint()`` maps back to it.
+
+        ``trace_route`` takes *locations* and localizes them with
+        ``map.get_waypoint()``, which returns the nearest lane -- and junction
+        connectors overlap in space, so 11 of the 152 Town10HD preset waypoints
+        localize onto a different road. The trace then starts or ends somewhere
+        else and detours up to 600 m around the block. Walking a little way
+        along the intended lane finds a point that localizes correctly.
+        """
+        for direction in (1, -1):
+            current = waypoint
+            for _ in range(14):
+                snapped = self.map.get_waypoint(current.transform.location)
+                if (snapped.road_id == waypoint.road_id
+                        and snapped.lane_id == waypoint.lane_id):
+                    return current.transform.location
+                nxt = (current.next(PLAN_SAMPLING_M) if direction > 0
+                       else current.previous(PLAN_SAMPLING_M))
+                if not nxt:
+                    break
+                current = nxt[0]
+                if (current.road_id != waypoint.road_id
+                        or current.lane_id != waypoint.lane_id):
+                    break
+        return None
+
+    @staticmethod
+    def _walk_same_lane(wp_a, wp_b):
+        """Waypoints from ``wp_a`` to ``wp_b`` along one lane, or None.
+
+        Same road, same section, same lane, and ``wp_b`` ahead of ``wp_a`` *in
+        that lane's travel direction*: then the lane geometry is the plan, and
+        asking trace_route for it would only re-derive (and sometimes
+        mis-derive) the same points.
+        """
+        if (wp_a.road_id != wp_b.road_id or wp_a.lane_id != wp_b.lane_id
+                or wp_a.section_id != wp_b.section_id):
+            return None
+        travel = 1 if wp_a.lane_id < 0 else -1
+        if (wp_b.s - wp_a.s) * travel <= 0:
+            return None
+        out = [wp_a]
+        current = wp_a
+        for _ in range(4000):
+            if current.transform.location.distance(
+                    wp_b.transform.location) <= PLAN_SAMPLING_M * 1.5:
+                break
+            nxt = current.next(PLAN_SAMPLING_M)
+            if not nxt:
+                return None
+            nxt = nxt[0]
+            if nxt.road_id != wp_a.road_id or nxt.lane_id != wp_a.lane_id:
+                return None
+            current = nxt
+            out.append(current)
+        out.append(wp_b)
+        return out
+
+    def _trace_hop(self, wp_a, wp_b):
+        """Plan points from ``wp_a`` to ``wp_b`` across a road change."""
+        grp = self._global_planner()
+        start = self._relocalize(wp_a) or wp_a.transform.location
+        end = self._relocalize(wp_b) or wp_b.transform.location
+        trace = grp.trace_route(start, end)
+        if not trace:
+            return None
+        # trace_route's own endpoints are the *nearest* waypoints to the
+        # locations it was handed, so its head and tail are replaced with the
+        # preset waypoints: the plan has to visit them, not something nearby.
+        return [wp_a] + [wp for wp, _opt in trace[1:-1]] + [wp_b]
+
+    def _build_plan(self) -> list:
+        """The configured route as ``[(carla.Waypoint, RoadOption)]``.
+
+        Built from the preset, not from a destination point: every preset
+        waypoint is resolved onto a driving lane travelling the right way, then
+        the gaps between consecutive waypoints are filled -- by walking the lane
+        when both ends share one, and by ``trace_route`` (which keeps the plan on
+        the intended roads) when the road changes. ``set_destination()`` is never
+        called: it re-plans from the ego's current position to a single point,
+        which is exactly how the preset's intermediate waypoints used to be
+        thrown away.
+        """
+        resolved = self._resolve_route_waypoints()
+        if len(resolved) < 2:
+            return []
+        raw: list = []
+        stats = {"hops": 0, "walked": 0, "traced": 0, "failed": 0}
+        for wp_a, wp_b in zip(resolved, resolved[1:]):
+            if wp_a is None or wp_b is None:
+                stats["failed"] += 1
+                continue
+            stats["hops"] += 1
+            walked = self._walk_same_lane(wp_a, wp_b)
+            if walked is not None:
+                raw.extend(walked)
+                stats["walked"] += 1
+                continue
+            hopped = self._trace_hop(wp_a, wp_b)
+            if hopped is None:
+                stats["failed"] += 1
+                self.events.append({
+                    "t": self.sim_time,
+                    "kind": "plan_hop_failed",
+                    "detail": (f"road {wp_a.road_id}/{wp_a.lane_id} -> "
+                               f"{wp_b.road_id}/{wp_b.lane_id} 无法规划，跳过该段"),
+                })
+                continue
+            raw.extend(hopped)
+            stats["traced"] += 1
+
+        plan = []
+        for waypoint in raw:
+            if plan and self._same_plan_point(plan[-1][0], waypoint):
+                continue
+            plan.append((waypoint, None))
+
+        labelled = self._label_road_options(plan)
+        self._plan_stats = {**stats, "points": len(labelled),
+                            "length_m": round(self._plan_length(labelled), 1),
+                            "unresolved_waypoints": sum(1 for w in resolved if w is None)}
+        detail = (f"路线计划：{stats['hops']} 段（沿车道 {stats['walked']}，"
+                  f"跨路 {stats['traced']}，失败 {stats['failed']}），"
+                  f"{len(labelled)} 点，{self._plan_stats['length_m']} m，"
+                  f"预设航点 {len(resolved)} 个")
+        self.events.append({"t": self.sim_time, "kind": "route_plan", "detail": detail})
+        print(f"[session {self.id}] {detail}", flush=True)
+        return labelled
+
+    @staticmethod
+    def _same_plan_point(a, b) -> bool:
+        return (a.road_id == b.road_id and a.section_id == b.section_id
+                and a.lane_id == b.lane_id
+                and a.transform.location.distance(b.transform.location) < 0.5)
+
+    @staticmethod
+    def _plan_length(plan) -> float:
+        return sum(a[0].transform.location.distance(b[0].transform.location)
+                   for a, b in zip(plan, plan[1:]))
+
+    @staticmethod
+    def _point_along(plan, start: int, metres: float):
+        base = plan[start][0].transform.location
+        index = start
+        while index + 1 < len(plan):
+            index += 1
+            if plan[index][0].transform.location.distance(base) >= metres:
+                break
+        return plan[index][0]
+
+    def _label_road_options(self, plan: list) -> list:
+        """Attach a RoadOption to every plan point, from the plan's own geometry.
+
+        ``trace_route`` does return labels, but they describe *its* A* route and
+        it carries turn state between calls (``_previous_decision``); a plan
+        spliced from many hops plus lane walks is not that route, so its labels
+        would be wrong exactly where it matters. The turn is therefore measured
+        on the plan: the heading change between the point ~10 m behind and the
+        point ~10 m ahead, taking the sign of the cross product (CARLA's yaw
+        grows towards +Y, so a positive cross product is a left turn). The 35
+        degree threshold is the agent library's own
+        (``local_planner._compute_connection``), so LANEFOLLOW/LEFT/RIGHT mean
+        what BasicAgent and BehaviorAgent already interpret.
+
+        Only points at or next to a junction get LEFT/RIGHT: a lane that merely
+        curves is not a turn instruction, and labelling every arc would make
+        BehaviorAgent slow down at every bend (``behavior_agent.run_step``
+        case 3).
+        """
+        RoadOption = self._road_option_enum()
+
+        labelled = []
+        for i, (waypoint, _unused) in enumerate(plan):
+            j = i
+            while j > 0 and plan[j][0].transform.location.distance(
+                    waypoint.transform.location) < PLAN_TURN_LOOKAHEAD_M:
+                j -= 1
+            before = plan[j][0]
+            after = self._point_along(plan, i, PLAN_TURN_LOOKAHEAD_M)
+            v1x = waypoint.transform.location.x - before.transform.location.x
+            v1y = waypoint.transform.location.y - before.transform.location.y
+            v2x = after.transform.location.x - waypoint.transform.location.x
+            v2y = after.transform.location.y - waypoint.transform.location.y
+            cross = v1x * v2y - v1y * v2x
+            turn = math.degrees(math.atan2(cross, v1x * v2x + v1y * v2y))
+            near_junction = (waypoint.is_junction or before.is_junction
+                             or after.is_junction)
+            if not near_junction or abs(turn) < TURN_THRESHOLD_DEG:
+                labelled.append((waypoint, RoadOption.LANEFOLLOW))
+            elif turn > 0.0:
+                labelled.append((waypoint, RoadOption.LEFT))
+            else:
+                labelled.append((waypoint, RoadOption.RIGHT))
+        return labelled
+
+    def _plan_heading_at_start(self) -> float:
+        """Bearing of the plan's first segment, in CARLA yaw degrees.
+
+        The ego has to face *the direction the plan travels*, which is not the
+        same as the first waypoint's own lane yaw when the route leaves the road
+        immediately (a junction connector, or a waypoint at a road's end): the
+        lane's yaw is the road's tangent, the plan's heading is where the car
+        will actually go. Before this, the ego was spawned on the lane's yaw of
+        a waypoint that had resolved to the opposite carriageway, so it started
+        facing backwards and drove 494 m to reach a point 94 m away.
+        """
+        if len(self._plan) >= 2:
+            a = self._plan[0][0].transform.location
+            # a few metres in, so a 2 m step does not amplify the noise
+            target = a
+            for waypoint, _opt in self._plan[1:]:
+                target = waypoint.transform.location
+                if a.distance(target) >= 4.0:
+                    break
+            if a.distance(target) > 1e-3:
+                return math.degrees(math.atan2(target.y - a.y, target.x - a.x))
+        if self._plan:
+            return self._plan[0][0].transform.rotation.yaw
+        return 0.0
 
     def _spawn_ego(self) -> None:
-        """Spawn the ego on a clear spot near the route start.
+        """Spawn the ego on the plan's first waypoint, facing the plan.
 
-        A bare waypoint transform can sit inside static geometry (kerbs, bridge
-        decks, junction furniture): the car spawns "fine" and then cannot move,
-        even at full throttle. The map's own spawn points are guaranteed clear,
-        so prefer the nearest one to the route start.
+        The pose comes from the plan, not from the nearest map spawn point: the
+        car has to start *on* the configured route's first waypoint and pointing
+        along its first segment, otherwise the plan's opening metres are driven
+        backwards or sideways. The map's spawn points are only a fallback for the
+        case where the plan's own start is inside static geometry (kerbs, bridge
+        decks, junction furniture) and the actor cannot be created there.
         """
         blueprint_id = self.config["ego"]["blueprint"]
         blueprints = self.world.get_blueprint_library()
@@ -350,46 +698,113 @@ class Session:
         if bp is None:
             raise SessionError(f"车型不存在：{blueprint_id}")
 
-        first = self.route_waypoints[0]
-        start_wp = self._waypoint_at(first["road_id"], first["lane_id"], first["s"])
-        if start_wp is None:
-            raise SessionError(
-                f"路线起点无法解析：road {first['road_id']} lane {first['lane_id']} s {first['s']}")
+        if not self._plan:
+            raise SessionError("路线计划为空：无法确定主车出生位姿")
+        start_wp = self._plan[0][0]
         start_loc = start_wp.transform.location
-
-        candidates = sorted(
-            self.map.get_spawn_points(),
-            key=lambda sp: sp.location.distance(start_loc))
+        route_yaw = self._plan_heading_at_start()
         carla = _carla()
 
-        # Face the ego along the route: a spawn point has its own (often
-        # opposite) heading, and a BehaviorAgent asked to drive "the other way"
-        # just stands on the brake. Prefer points already aligned, then rewrite
-        # the rotation to the route heading.
-        route_yaw = start_wp.transform.rotation.yaw
-        aligned = []
-        for spawn_point in candidates[:16]:
-            yaw_delta = abs((spawn_point.rotation.yaw - route_yaw + 180.0) % 360.0 - 180.0)
-            aligned.append((yaw_delta, spawn_point))
-        aligned.sort(key=lambda item: (item[0] > 60.0, item[0], item[1].location.distance(start_loc)))
+        def attempt(location, yaw):
+            transform = carla.Transform(
+                carla.Location(x=location.x, y=location.y, z=location.z + 0.3),
+                carla.Rotation(pitch=0.0, yaw=yaw, roll=0.0))
+            actor = self.world.try_spawn_actor(bp, transform)
+            return actor, transform
 
         self.ego = None
-        for _delta, spawn_point in aligned[:12]:
-            transform = carla.Transform(spawn_point.location,
-                                        carla.Rotation(pitch=0.0, yaw=route_yaw, roll=0.0))
-            self.ego = self.world.try_spawn_actor(bp, transform)
-            if self.ego is not None:
-                break
+        self._spawn_request_location = None
+        self._spawn_source = None
+        # 1st choice: exactly on the plan's first waypoint, facing its first segment
+        self.ego, transform = attempt(start_loc, route_yaw)
+        if self.ego is not None:
+            self._spawn_request_location = transform.location
+            self._spawn_source = "plan_start"
+        else:
+            # 2nd choice: the nearest map spawn point, still rotated to the plan
+            # heading, so the car is clear of geometry but points the right way
+            candidates = sorted(self.map.get_spawn_points(),
+                                key=lambda sp: sp.location.distance(start_loc))
+            aligned = []
+            for spawn_point in candidates[:16]:
+                yaw_delta = abs((spawn_point.rotation.yaw - route_yaw + 180.0) % 360.0 - 180.0)
+                aligned.append((yaw_delta, spawn_point))
+            aligned.sort(key=lambda item: (item[0] > 60.0, item[0],
+                                           item[1].location.distance(start_loc)))
+            for _delta, spawn_point in aligned[:12]:
+                self.ego, transform = attempt(spawn_point.location, route_yaw)
+                if self.ego is not None:
+                    self._spawn_request_location = transform.location
+                    self._spawn_source = "map_spawn_point"
+                    break
         if self.ego is None:
-            # last resort: the waypoint transform itself, nudged upwards
-            transform = start_wp.transform
-            transform.location.z += 0.3
-            self.ego = self.world.try_spawn_actor(bp, transform)
-        if self.ego is None:
-            raise SessionError("主车生成失败：路线起点附近没有可用位置")
+            raise SessionError("主车生成失败：路线起点与地图出生点都无法生成")
 
         self.ego.set_autopilot(False)
         self.ego.apply_control(carla.VehicleControl())
+
+        # Record the pose the simulator really gave us, so the run can prove the
+        # spawn faced the route instead of assuming it did. The transform is not
+        # readable in the same call that created the actor (it comes back as the
+        # default zero pose), so it is captured on the first tick instead --
+        # see _capture_spawn_pose().
+        self.spawn_pose = {
+            "x": None, "y": None, "z": None, "yaw": None,
+            "plan_yaw": round(route_yaw, 2),
+            "plan_first_waypoint": {
+                "road_id": start_wp.road_id,
+                "lane_id": start_wp.lane_id,
+                "s": round(start_wp.s, 2),
+            },
+            "source": self._spawn_source,
+            "requested_distance_to_plan_start_m": round(
+                self._spawn_request_location.distance(start_loc), 2)
+            if self._spawn_request_location is not None else None,
+            "measured": False,
+        }
+        self._capture_spawn_pose()
+
+    def _capture_spawn_pose(self) -> None:
+        """Fill in the ego's real spawn pose once the simulator reports it.
+
+        ``try_spawn_actor`` returns an actor whose transform is not populated
+        yet; reading it immediately yields (0, 0, 0) with yaw 0, which is worse
+        than no number at all because it looks like a measurement. Retried on
+        every tick until the simulator answers, and left as ``measured: False``
+        if it never does.
+        """
+        if self.ego is None or self.spawn_pose is None or self.spawn_pose.get("measured"):
+            return
+        try:
+            actual = self.ego.get_transform()
+        except Exception:  # noqa: BLE001
+            return
+        if (abs(actual.location.x) < 1e-6 and abs(actual.location.y) < 1e-6
+                and abs(actual.rotation.yaw) < 1e-6):
+            return  # the simulator has not published the spawn yet
+        plan_start = self._plan[0][0].transform.location if self._plan else None
+        self.spawn_pose.update({
+            "x": round(actual.location.x, 2),
+            "y": round(actual.location.y, 2),
+            "z": round(actual.location.z, 2),
+            "yaw": round(actual.rotation.yaw, 2),
+            "distance_to_plan_start_m": (
+                round(actual.location.distance(plan_start), 2)
+                if plan_start is not None else None),
+            "yaw_delta_deg": round(
+                (actual.rotation.yaw - self.spawn_pose["plan_yaw"] + 180.0) % 360.0 - 180.0, 2),
+            "measured": True,
+        })
+        detail = (f"主车出生：road {self.spawn_pose['plan_first_waypoint']['road_id']} "
+                  f"lane {self.spawn_pose['plan_first_waypoint']['lane_id']} "
+                  f"（{self.spawn_pose.get('source')}）"
+                  f"yaw {actual.rotation.yaw:.1f}（计划首段 "
+                  f"{self.spawn_pose['plan_yaw']:.1f}，偏差 "
+                  f"{self.spawn_pose['yaw_delta_deg']:+.1f}°），"
+                  f"距计划起点 {self.spawn_pose['distance_to_plan_start_m']} m")
+        self.events.append({"t": round(self.sim_time, 2), "kind": "ego_spawn",
+                            "detail": detail})
+        print(f"[session {self.id}] {detail}", flush=True)
 
     def _spawn_traffic(self, vehicles: int, autopilot: bool) -> None:
         """Spawn the configured background traffic and record why it did or did not.
@@ -667,10 +1082,13 @@ class Session:
             self.metrics = []
             self.events = []
             self._apply_weather()
+            # The plan comes first: the ego is spawned on its first waypoint
+            # facing its first segment, and the overlay paints it.
+            self._plan = self._build_plan()
+            self._cache_route_points()
             self._spawn_ego()
             vehicles, _walkers = self._traffic_counts()
             self._spawn_traffic(vehicles, autopilot=False)
-            self._cache_route_points()
             self._set_settings(PREVIEW_HZ)
             self._compute_preview_camera()
             self._stalled_ticks = 0
@@ -689,14 +1107,38 @@ class Session:
             raise SessionError(str(exc)) from exc
         return self.status()
 
+    def plan_polyline(self) -> list[dict]:
+        """The plan as plain data, so a checker can measure against it.
+
+        Exposed instead of the agent's live queue because the queue is consumed
+        as the car drives; this is the whole route the run committed to.
+        """
+        return [
+            {
+                "x": round(waypoint.transform.location.x, 2),
+                "y": round(waypoint.transform.location.y, 2),
+                "z": round(waypoint.transform.location.z, 2),
+                "yaw": round(waypoint.transform.rotation.yaw, 2),
+                "road_id": waypoint.road_id,
+                "section_id": waypoint.section_id,
+                "lane_id": waypoint.lane_id,
+                "s": round(waypoint.s, 2),
+                "lane_type": str(waypoint.lane_type),
+                "is_junction": bool(waypoint.is_junction),
+                "option": str(option),
+            }
+            for waypoint, option in self._plan
+        ]
+
     def _cache_route_points(self) -> None:
-        """Resolve the route once so it can be painted into the world each tick."""
-        points = []
-        for spec in self.route_waypoints:
-            waypoint = self._waypoint_at(spec["road_id"], spec["lane_id"], spec["s"])
-            if waypoint is not None:
-                points.append(waypoint.transform.location)
-        self._route_points = points
+        """Cache the polyline the overlay paints: the plan the agent follows.
+
+        The overlay used to paint the preset's control points -- 18 vertices for
+        a 498 m preset -- and the car, planning on its own, drove somewhere else
+        (20 % of the drive was within 3 m of the line). It now paints the plan,
+        so what is drawn and what is driven are the same points.
+        """
+        self._route_points = [waypoint.transform.location for waypoint, _opt in self._plan]
         self._route_color = _carla().Color(255, 180, 84)
 
     def set_weather(self, preset: str, custom: dict | None = None) -> dict:
@@ -716,6 +1158,7 @@ class Session:
             route_cfg["preset_id"] = preset_id
             self.route_waypoints = self._resolve_route()
             if self.map is not None:
+                self._plan = self._build_plan()
                 self._cache_route_points()
         if visible is not None:
             self.show_route = bool(visible)
@@ -802,22 +1245,10 @@ class Session:
         algo_id = algo.get("id", "carla.behavior")
         params = algo.get("params", {}) or {}
 
-        # The wheel has no `carla.agents`; the agents live in PythonAPI/carla.
-        import sys  # noqa: PLC0415
-
-        if str(paths.PYTHON_API_CARLA) not in sys.path and paths.PYTHON_API_CARLA.is_dir():
-            sys.path.insert(0, str(paths.PYTHON_API_CARLA))
-
+        # The wheel has no `carla.agents`; the agents live in PythonAPI/carla,
+        # and the path insert happens in _import_agents() before any import.
         def load(module: str, name: str):
-            for candidate in (module, "carla." + module):
-                try:
-                    mod = __import__(candidate, fromlist=[name])
-                    return getattr(mod, name)
-                except Exception:  # noqa: BLE001
-                    continue
-            raise ImportError(
-                f"无法导入 {name}（已尝试 {module} 与 carla.{module}，"
-                f"PYTHONPATH 需包含 {paths.PYTHON_API_CARLA}）")
+            return self._import_agents(module, name)
 
         try:
             if "basic" in algo_id:
@@ -845,42 +1276,53 @@ class Session:
         except Exception as exc:  # noqa: BLE001
             raise SessionError(f"算法 {algo_id} 初始化失败：{exc}") from exc
 
-        last = self.route_waypoints[-1]
-        destination_wp = self._waypoint_at(last["road_id"], last["lane_id"], last["s"])
-        if destination_wp is None:
-            raise SessionError("路线终点无法解析")
-        destination_wp = self._driving_waypoint_near(destination_wp)
-        self._destination = destination_wp.transform.location
-        try:
-            agent.set_destination(destination_wp.transform.location)
-        except TypeError:
-            agent.set_destination(destination_wp.transform.location,
-                                  self.ego.get_transform().location)
+        # The agent follows the *configured* route. set_destination() is never
+        # called: it re-plans from the ego's current position to a single point,
+        # so the preset's intermediate waypoints were never visited (the ego
+        # drove 494.6 m to reach a destination 94 m away).
+        if not self._plan:
+            raise SessionError("路线计划为空：无法交给算法执行")
+        self._destination = self._plan[-1][0].transform.location
+        self._apply_plan(agent)
 
         # A BehaviorAgent with an empty plan just sits there braking, so prove
-        # the plan exists and otherwise fall back to the simpler lane follower.
+        # the plan is really queued and otherwise fall back to the simpler lane
+        # follower -- which is given the *same* plan, not a fresh destination.
         try:
-            plan = agent.get_local_planner().get_plan()
+            queued = agent.get_local_planner().get_plan()
         except Exception:  # noqa: BLE001
-            plan = None
-        if plan is not None and len(plan) == 0:
+            queued = None
+        if queued is not None and len(queued) == 0:
             self.events.append({
                 "t": self.sim_time,
                 "kind": "planner_fallback",
-                "detail": "BehaviorAgent 未能规划到终点，回退 BasicAgent",
+                "detail": (f"{algo_id} 未能装载路线计划（0 个航点），回退 BasicAgent，"
+                           f"沿用同一计划"),
             })
+            print(f"[session {self.id}] planner_fallback: {algo_id} -> BasicAgent", flush=True)
             agent = self._make_basic_agent()
-            agent.set_destination(destination_wp.transform.location)
+            self._apply_plan(agent)
         return agent
 
-    def _make_basic_agent(self):
-        import sys  # noqa: PLC0415
+    def _apply_plan(self, agent) -> None:
+        """Hand the plan to ``agent`` via set_global_plan and verify it took it."""
+        plan = [(waypoint, option) for waypoint, option in self._plan]
+        try:
+            agent.set_global_plan(plan)
+        except TypeError:
+            # older signature without the keyword arguments
+            agent.get_local_planner().set_global_plan(plan)
+        queued = agent.get_local_planner().get_plan()
+        detail = (f"路线计划已装载：{len(queued)} 个航点，"
+                  f"{self._plan_length(self._plan):.1f} m，"
+                  f"终点 road {self._plan[-1][0].road_id} lane {self._plan[-1][0].lane_id}")
+        self.events.append({"t": self.sim_time, "kind": "agent_plan", "detail": detail})
+        print(f"[session {self.id}] {detail}", flush=True)
 
-        if str(paths.PYTHON_API_CARLA) not in sys.path and paths.PYTHON_API_CARLA.is_dir():
-            sys.path.insert(0, str(paths.PYTHON_API_CARLA))
+    def _make_basic_agent(self):
         params = (self.config.get("algorithm", {}).get("params") or {})
         try:
-            from agents.navigation.basic_agent import BasicAgent  # noqa: PLC0415
+            BasicAgent = self._import_agents("agents.navigation.basic_agent", "BasicAgent")
         except Exception as exc:  # noqa: BLE001
             raise SessionError(f"BasicAgent 不可用：{exc}") from exc
         return BasicAgent(
@@ -956,6 +1398,7 @@ class Session:
                 # Never `+= None`: a lost synchronous mode must degrade the run,
                 # not end it (see _tick_delta).
                 self.sim_time += self._tick_delta()
+                self._capture_spawn_pose()
                 if self.state == "running":
                     self._step_agent()
                 if self._running_metrics and self.tick % max(1, int(self._target_hz / 10)) == 0:
@@ -1008,20 +1451,44 @@ class Session:
             if sleep_for > 0:
                 self._stop_evt.wait(sleep_for)
 
+    def _remaining_plan_points(self) -> int | None:
+        """How many plan points the agent still has queued, or None if unknown."""
+        if self.agent is None:
+            return None
+        try:
+            return len(self.agent.get_local_planner().get_plan())
+        except Exception:  # noqa: BLE001
+            return None
+
     def _at_destination(self) -> bool:
         """True when the ego is parked *because the route ended*.
 
-        Two independent signals: the agent reports its plan is done, or the car
-        sits inside ARRIVAL_RADIUS_M of the planned end. Either one means a
-        standing car is an arrival, not a stall.
+        The decisive signal is the agent's own plan: the local planner pops a
+        waypoint as it is reached, so an (almost) empty queue means the route is
+        driven. Distance to the destination alone is not enough -- a ``loop``
+        preset ends where it began, ~3 m from the spawn point on the opposite
+        lane, so a radius test declared "arrived" on the first tick of every
+        loop run. Distance is therefore only used as a corroborating signal
+        once the queue is nearly exhausted.
         """
-        if self.ego is None or self._destination is None:
+        if self.ego is None:
             return False
-        try:
-            if self.agent is not None and self.agent.done():
+        remaining = self._remaining_plan_points()
+        if remaining is not None:
+            if remaining == 0:
                 return True
-        except Exception:  # noqa: BLE001  (agent implementation without done())
-            pass
+            # a couple of points left is the planner's tail, not a detour
+            if remaining <= 2 and self._destination is not None:
+                try:
+                    return self.ego.get_location().distance(
+                        self._destination) <= ARRIVAL_RADIUS_M
+                except Exception:  # noqa: BLE001
+                    return False
+            return False
+        # No plan introspection (an agent without get_local_planner): fall back
+        # to the old radius test.
+        if self._destination is None:
+            return False
         try:
             return self.ego.get_location().distance(self._destination) <= ARRIVAL_RADIUS_M
         except Exception:  # noqa: BLE001
@@ -1047,11 +1514,14 @@ class Session:
                 self._stalled_ticks = 0
                 if not self._arrived_reported:
                     self._arrived_reported = True
-                    distance = self.ego.get_location().distance(self._destination)
+                    distance = (self.ego.get_location().distance(self._destination)
+                                if self._destination is not None else float("nan"))
                     self.events.append({
                         "t": round(self.sim_time, 2),
                         "kind": "ego_arrived",
-                        "detail": f"主车到达规划终点（距终点 {distance:.1f} m），停车不算停滞",
+                        "detail": (f"主车走完路线计划（剩余航点 "
+                                   f"{self._remaining_plan_points()}，距终点 {distance:.1f} m），"
+                                   f"停车不算停滞"),
                     })
             elif control.throttle >= 0.05:
                 self._stalled_ticks += 1
@@ -1207,6 +1677,19 @@ class Session:
                 "visible": bool(self.show_route and len(self._route_points) >= 2),
                 "points": len(self._route_points),
                 "draw_error": self._route_draw_error,
+                # What the agent is following, so the run can be checked against
+                # the route that was configured rather than against a guess.
+                "plan": {
+                    "points": len(self._plan),
+                    "length_m": self._plan_stats.get("length_m"),
+                    "preset_waypoints": len(self.route_waypoints),
+                    "unresolved_waypoints": self._plan_stats.get("unresolved_waypoints"),
+                    "hops": self._plan_stats.get("hops"),
+                    "walked": self._plan_stats.get("walked"),
+                    "traced": self._plan_stats.get("traced"),
+                    "failed": self._plan_stats.get("failed"),
+                },
+                "spawn": self.spawn_pose,
             },
             "preview_degraded": self.preview_degraded,
             # The clock the session is *really* running at, so the panel can show

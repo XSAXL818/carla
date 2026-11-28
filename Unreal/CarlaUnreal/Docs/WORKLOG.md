@@ -5,6 +5,18 @@
 
 ---
 
+### 16:30 · 主车真正按预设路线行驶（不再由 agent 自行规划）
+- **问题**：`_build_agent()` 只调 `agent.set_destination(最后一个路点)`，而 `set_destination` 内部是从**主车当前位置**规划到**单点**，预设的中间路点全被丢掉。后果（上一轮实测）：主车出生即背向路线、为到达 94 m 外的终点跑了 494.6 m、画出来的预设折线与实际轨迹只有约 20% 重合；`cross` 预设还有 8 个路点落在 `shoulder`/`sidewalk` 车道上。
+- **处理**：
+  1. **计划由预设生成**（`session_runner._build_plan()`）：逐个解析预设路点→相邻两点同车道就沿车道 `next()` 走（几何本身），换路才用 `GlobalRoutePlanner.trace_route()`；`trace_route` 用 `map.get_waypoint()` 定位最近车道，而路口连接路在空间上重叠，152 个路点里 11 个会被定位到别的路导致绕行数百米，所以锚点先由 `_relocalize()` 沿目标车道挪到能正确解析的位置。`RoadOption` 从计划几何自身算（前后各 10 m 航向差、叉积定左右、阈值沿用 agent 库的 35°，且只在路口附近给 LEFT/RIGHT），因为 `trace_route` 的标签描述的是它自己那趟 A* 路径并带跨调用状态，拼接后的计划不是那条路径。
+  2. **喂计划而非终点**：`_apply_plan()` 调 `set_global_plan(plan)`，`set_destination()` 彻底移出路径；`planner_fallback` 保留，但回退后的 `BasicAgent` 装的是**同一份计划**。
+  3. **出生位姿来自计划**：主车直接放在计划第一个路点上、朝向计划首段（4 m 基线方位角），地图出生点只在计划起点被几何挡住时作退路且仍改成计划朝向。
+  4. **车道问题在源头修**（`gen_route_presets.py`）：图改为**方向严格**——OpenDRIVE 的 link 是双向拓扑，不代表两向都能开，`drivable_dirs()` 只承认真有 `driving` 车道的那一侧，`prune_graph()` 删掉其余节点/边（546→231 条边）；路口连接方向从 `laneLink` 的 `from` 车道号推出（85 条里有 42 条是从入路末端驶出，旧代码一律当成从末端驶出，这正是绕行的根因）；`lane_at()` 不再退到“任意非零车道”；`LANE_ID` 哨兵从 `-1` 改成 `0`（`-1` 在本图是真实车道，同一个值既是“右车道”又是“任意车道”，是错向的根源之一）。重新生成 `data/routes/Town10HD.json`。
+  5. **叠加线画计划**：`_cache_route_points()` 取 `_plan` 的坐标，画面与轨迹同一串点；新增 `GET /sessions/{id}/plan.json` 供外部对照。
+- **结果**（Town10HD `loop`，真实 `-game` 会话）：计划 263 点 / 541.8 m，预设 24 个路点 0 未解析、0 非行驶车道、0 逆行；出生在计划起点 0.01 m 处、朝向偏差 **0.01°**；1075 个采样点 **100%** 落在计划 3 m 内（1 m 内 94%，修复前 20.4%）；实驶 514.8 m（计划 541.9 m）；`ego_arrived` 正常报出，无 `ego_stalled`、无 `planner_fallback`。
+- **证据**：`acceptance/evidence-19/`（`measure-loop-final.json`、`samples.jsonl`、`shots/` 截图）。
+- **顺带修**：`gen_route_presets.py --limit` 原来会用单图结果**覆盖** `index.json`，把另外 14 张图从索引里删掉（界面地图选择器因此只剩 1 张）；改为合并。
+
 ### 14:55 · DSH 桌面 profile 注册 CARLA 技能库 MCP（`carla`）
 - **问题**：`Util/AgenticTools` 的 MCP 服务只在仓库自带 `.mcp.json` 里登记，DSH 桌面 profile 没接，助手查 CARLA 技能库只能逐个读 `Skills/` 下的文件。
 - **处理**：在 `C:\Users\LoongTory\.dsh\profiles\desktop\cordis.patch.yml` 的 MCP 段插入一条 `@deepseek-ai/dsh-mcp-client` 行（`id: carla` / `serverName: "carla"` / `transport: stdio` / `command: node`），`args` 用**绝对路径** `C:/GameProject/CarlaUE5/carla/Util/AgenticTools/bin/carla-agentic-tools.js`（相对路径会按 Host 工作目录解析）；`toolCallTimeoutMs: 180000`，因为 `check_prerequisites` 内部给 `check_env.sh` 留了 120 s，默认 60 s 会截断正常调用。改前备份 `cordis.patch.yml.bak-2026-11-28T06-53-21-carla`（SHA256 一致），改后 PyYAML 解析通过；未重启 Host，HMR 热加载生效。
