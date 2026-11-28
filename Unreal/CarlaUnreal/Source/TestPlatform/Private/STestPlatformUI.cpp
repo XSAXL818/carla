@@ -151,6 +151,31 @@ namespace
 	constexpr float RightCardContentWidth = RightColumnContentWidth - 2.f * CardPadding;
 
 
+	/** Decimal places a step implies: 5 -> 0, 0.5 -> 1, 0.05 -> 2. */
+	int32 DecimalsForStep(float Step)
+	{
+		if (Step >= 1.f)
+		{
+			return 0;
+		}
+		if (Step >= 0.1f)
+		{
+			return 1;
+		}
+		if (Step >= 0.01f)
+		{
+			return 2;
+		}
+		return 3;
+	}
+
+	/** "50 km/h" / "2.0 m" / "3" — the value as the schema's unit demands. */
+	FString FormatParamNumber(float Value, float Step, const FString& Unit)
+	{
+		const FString Number = FString::Printf(TEXT("%.*f"), DecimalsForStep(Step), Value);
+		return Unit.IsEmpty() ? Number : FString::Printf(TEXT("%s %s"), *Number, *Unit);
+	}
+
 	TSharedRef<SWidget> Spacer(float Amount = 1.f)
 	{
 		return SNew(SSpacer).Size(FVector2D(Amount, 1.f));
@@ -868,57 +893,244 @@ TSharedRef<SWidget> STestPlatformUI::Chip(const FString& Text, bool bSelected,
 	return Button;
 }
 
-TSharedRef<SWidget> STestPlatformUI::SliderRow(const FString& Label, float Min, float Max,
-	float Step, float& Value, const FString& Unit)
+// ---------------------------------------------------------------------- //
+// algorithm parameters, rendered from the backend's own schema
+//
+// Everything below dispatches on FAlgoParam::Type and reads the schema's own
+// group / range / unit / default. No parameter key is named anywhere, which is
+// the point: a new algorithm or a new parameter is a backend-only change.
+// ---------------------------------------------------------------------- //
+FAlgoParamValue STestPlatformUI::ResolvedParam(const FAlgoParam& Param) const
 {
+	return ResolveAlgoParamValue(Param, Config.AlgoParams);
+}
+
+void STestPlatformUI::SetParamNumber(const FAlgoParam& Param, float Value)
+{
+	FAlgoParamValue& Stored = Config.AlgoParams.FindOrAdd(Param.Key);
+	Stored.Type = Param.Type;
+	Stored.Number = FMath::Clamp(Value, Param.Min, Param.Max);
+	Stored.bUserSet = true;
+}
+
+void STestPlatformUI::SetParamBool(const FAlgoParam& Param, bool bValue)
+{
+	FAlgoParamValue& Stored = Config.AlgoParams.FindOrAdd(Param.Key);
+	Stored.Type = Param.Type;
+	Stored.bBool = bValue;
+	Stored.bUserSet = true;
+}
+
+void STestPlatformUI::SetParamString(const FAlgoParam& Param, const FString& Value)
+{
+	FAlgoParamValue& Stored = Config.AlgoParams.FindOrAdd(Param.Key);
+	Stored.Type = Param.Type;
+	Stored.StringValue = Value;
+	Stored.bUserSet = true;
+}
+
+void STestPlatformUI::SyncAlgoParamsToSchema()
+{
+	const FAlgoInfo* Algo = Api.IsValid() ? Api->SelectedAlgorithm(Config.AlgoId) : nullptr;
+	if (!Algo)
+	{
+		return;
+	}
+	TSet<FString> Declared;
+	for (const FAlgoParam& Param : Algo->Params)
+	{
+		Declared.Add(Param.Key);
+	}
+	// Keep what the new schema still declares (same key, same type); drop the
+	// rest. A key the algorithm does not take would otherwise travel in the
+	// config and be silently ignored by the backend -- or worse, be accepted by
+	// a different algorithm that happens to use the same name for something
+	// else.
+	for (auto It = Config.AlgoParams.CreateIterator(); It; ++It)
+	{
+		const FAlgoParam* Param = Algo->Params.FindByPredicate(
+			[&Key = It.Key()](const FAlgoParam& Candidate) { return Candidate.Key == Key; });
+		if (Param == nullptr || Param->Type != It.Value().Type)
+		{
+			UE_LOG(LogTestPlatformUI, Log,
+				TEXT("algorithm %s: dropping stored parameter '%s' (%s) — not in its schema"),
+				*Algo->Id, *It.Key(), *It.Value().Type);
+			GLog->Flush();
+			It.RemoveCurrent();
+		}
+	}
+}
+
+TSharedRef<SWidget> STestPlatformUI::AlgoParamRow(const FAlgoParam& Param)
+{
+	if (Param.Type == TEXT("enum"))
+	{
+		return EnumParamRow(Param);
+	}
+	if (Param.Type == TEXT("number"))
+	{
+		return NumberParamRow(Param);
+	}
+	if (Param.Type == TEXT("bool"))
+	{
+		return BoolParamRow(Param);
+	}
+	return UnknownParamRow(Param);
+}
+
+TSharedRef<SWidget> STestPlatformUI::EnumParamRow(const FAlgoParam& Param)
+{
+	TSharedRef<SWrapBox> Wrap = SNew(SWrapBox).UseAllottedSize(true)
+		.InnerSlotPadding(FVector2D(6.f, 6.f));
+	if (Param.Options.Num() == 0)
+	{
+		// An enum with no options cannot be chosen; say so instead of drawing an
+		// empty row that looks broken.
+		Wrap->AddSlot()[Text(TEXT("（schema 未给出 options）"), 9, false, ColDim)];
+	}
+	const FString Current = ResolvedParam(Param).StringValue;
+	for (const FAlgoOption& Option : Param.Options)
+	{
+		const FString Value = Option.Value;
+		Wrap->AddSlot()
+		[
+			Chip(Option.Label, Value == Current, [this, Param, Value]()
+			{
+				SetParamString(Param, Value);
+				RebuildAgent();
+				RebuildSummary();
+			})
+		];
+	}
 	return SNew(SVerticalBox)
+		+ SVerticalBox::Slot().AutoHeight().Padding(FMargin(0.f, 0.f, 0.f, 3.f))
+		[Text(AlgoParamLabel(Param), 10, false, ColMuted)]
+		+ SVerticalBox::Slot().AutoHeight()[Wrap];
+}
+
+TSharedRef<SWidget> STestPlatformUI::NumberParamRow(const FAlgoParam& Param)
+{
+	const FAlgoParamValue Current = ResolvedParam(Param);
+	const float Step = Param.Step;
+	const FString Unit = Param.Unit;
+
+	// The value is drawn from ResolvedParam every frame, so a control the user
+	// has not touched still shows the schema's default (and follows it if the
+	// schema changes underneath).
+	TSharedRef<STextBlock> ValueText = SNew(STextBlock)
+		.Text_Lambda([this, Param]()
+		{
+			return FText::FromString(
+				FormatParamNumber(ResolvedParam(Param).Number, Param.Step, Param.Unit));
+		})
+		.Font(F(10, true));
+
+	TSharedRef<SVerticalBox> Row = SNew(SVerticalBox)
 		+ SVerticalBox::Slot().AutoHeight()
 		[
 			SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot().FillWidth(1.f)[Text(Label, 10, false, ColMuted)]
+			+ SHorizontalBox::Slot().FillWidth(1.f)
+			[Text(AlgoParamLabel(Param), 10, false, ColMuted)]
+			+ SHorizontalBox::Slot().AutoWidth()[ValueText]
+		];
+
+	if (!Param.bHasRange)
+	{
+		// No min/max in the schema: there is no range to put on a slider, so the
+		// row is a stepper over the declared step instead of an invented 0..100.
+		Row->AddSlot().AutoHeight().Padding(FMargin(0.f, 2.f, 0.f, 0.f))
+		[
+			SNew(SHorizontalBox)
 			+ SHorizontalBox::Slot().AutoWidth()
 			[
-				SAssignNew(SpeedValueText, STextBlock)
-				.Text(FText::FromString(FString::Printf(TEXT("%.0f %s"), Value, *Unit)))
-				.Font(F(10, true))
-			]
-		]
-		+ SVerticalBox::Slot().AutoHeight().Padding(FMargin(0.f, 1.f, 0.f, 0.f))
-		[
-			SNew(SSlider)
-			.Value_Lambda([&Value, Min, Max]()
-			{
-				return (Max > Min) ? FMath::Clamp((Value - Min) / (Max - Min), 0.f, 1.f) : 0.f;
-			})
-			.OnValueChanged_Lambda([&Value, Min, Max, Step](float Normalized)
-			{
-				float NewValue = Min + Normalized * (Max - Min);
-				if (Step > 0.f)
+				SNew(SButton).ButtonStyle(&BtnGhost()).ContentPadding(FMargin(10.f, 3.f))
+				.OnClicked_Lambda([this, Param]()
 				{
-					NewValue = FMath::RoundToFloat(NewValue / Step) * Step;
-				}
-				Value = FMath::Clamp(NewValue, Min, Max);
-			})
+					SetParamNumber(Param, ResolvedParam(Param).Number - Param.Step);
+					return FReply::Handled();
+				})
+				[Text(TEXT("−"), 11)]
+			]
+			+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin(4.f, 0.f))
+			[
+				SNew(SButton).ButtonStyle(&BtnGhost()).ContentPadding(FMargin(10.f, 3.f))
+				.OnClicked_Lambda([this, Param]()
+				{
+					SetParamNumber(Param, ResolvedParam(Param).Number + Param.Step);
+					return FReply::Handled();
+				})
+				[Text(TEXT("+"), 11)]
+			]
 		];
+		return Row;
+	}
+
+	Row->AddSlot().AutoHeight().Padding(FMargin(0.f, 2.f, 0.f, 0.f))
+	[
+		SNew(SSlider)
+		.MinValue(Param.Min)
+		.MaxValue(Param.Max)
+		.StepSize(Step)
+		.Value_Lambda([this, Param]()
+		{
+			return ResolvedParam(Param).Number;
+		})
+		.OnValueChanged_Lambda([this, Param](float NewValue)
+		{
+			// Round to the schema's step so the value the backend receives is one
+			// the schema allows.
+			const float Snapped = Param.Step > 0.f
+				? FMath::RoundToFloat(NewValue / Param.Step) * Param.Step
+				: NewValue;
+			SetParamNumber(Param, Snapped);
+		})
+	];
+	return Row;
 }
 
-TSharedRef<SWidget> STestPlatformUI::CheckRow(const FString& Label, bool& Flag)
+TSharedRef<SWidget> STestPlatformUI::BoolParamRow(const FAlgoParam& Param)
 {
 	return SNew(SHorizontalBox)
 		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 		[
 			SNew(SCheckBox)
-			.IsChecked_Lambda([&Flag]()
+			.IsChecked_Lambda([this, Param]()
 			{
-				return Flag ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
+				return ResolvedParam(Param).bBool
+					? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
 			})
-			.OnCheckStateChanged_Lambda([&Flag](ECheckBoxState NewState)
+			.OnCheckStateChanged_Lambda([this, Param](ECheckBoxState NewState)
 			{
-				Flag = NewState == ECheckBoxState::Checked;
+				SetParamBool(Param, NewState == ECheckBoxState::Checked);
 			})
 		]
 		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin(6.f, 0.f, 0.f, 0.f))
-		[Text(Label, 10, false, ColMuted)];
+		[Text(AlgoParamLabel(Param), 10, false, ColMuted)];
+}
+
+TSharedRef<SWidget> STestPlatformUI::UnknownParamRow(const FAlgoParam& Param)
+{
+	// A type this build cannot render: show the key, its type and the schema's
+	// default, read-only, and say so exactly once. Dropping it silently would
+	// make a backend-only schema change look like it worked when it did not.
+	if (!UnknownParamTypesLogged.Contains(Param.Type))
+	{
+		UnknownParamTypesLogged.Add(Param.Type);
+		UE_LOG(LogTestPlatformUI, Warning,
+			TEXT("algorithm parameter '%s' has unsupported type '%s': rendered read-only "
+				"with its default (add a row type to AlgoParamRow to support it)"),
+			*Param.Key, *Param.Type);
+		GLog->Flush();
+	}
+	const FAlgoParamValue Value = ResolvedParam(Param);
+	const FString Shown = Param.Type == TEXT("number")
+		? FormatParamNumber(Value.Number, Param.Step, Param.Unit)
+		: Value.StringValue;
+	return SNew(SHorizontalBox)
+		+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center)
+		[Text(AlgoParamLabel(Param), 10, false, ColMuted)]
+		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+		[Text(FString::Printf(TEXT("%s · %s"), *Param.Type, *Shown), 9, false, ColDim)];
 }
 
 TSharedRef<SWidget> STestPlatformUI::KV(const FString& Key, const FString& Value)
@@ -1063,6 +1275,14 @@ void STestPlatformUI::RebuildAgent()
 			Chip(Algo.Name, Id == Config.AlgoId, [this, Id]()
 			{
 				Config.AlgoId = Id;
+				// Switching algorithm: values whose key the new schema still
+				// declares are kept, everything else is dropped, and every
+				// parameter the user has not touched shows that schema's own
+				// default again. Keeping a key the new algorithm does not declare
+				// would post a parameter it never asked for; keeping a touched
+				// value that *is* still declared (target_speed_kmh exists on both
+				// built-ins) preserves the user's intent across the switch.
+				SyncAlgoParamsToSchema();
 				RebuildAgent();
 				RebuildSummary();
 			}, Algo.Desc)
@@ -1073,54 +1293,56 @@ void STestPlatformUI::RebuildAgent()
 	AgentBox->AddSlot().AutoHeight().Padding(FMargin(0.f, 8.f, 0.f, 0.f))
 	[
 		WrappedText(LOCTEXT("AlgoNote",
-			"参数由算法自描述：/algorithms 返回字段 schema（类型 / 范围 / 单位 / 默认值）。"
-			"面板控件按内置算法固定，新增算法或参数需同步更新面板。").ToString(),
+			"参数由算法自描述：/algorithms 返回每个参数的 schema（类型 / 范围 / 单位 / 默认值 / 分组），"
+			"面板按 schema 渲染控件，新增算法或参数无需改面板。").ToString(),
 			RightColumnContentWidth, 9, false, ColDim)
 	];
 
-	// behaviour chips straight from the schema enum
-	TSharedRef<SWrapBox> BehaviourWrap = SNew(SWrapBox).UseAllottedSize(true)
-		.InnerSlotPadding(FVector2D(6.f, 6.f));
-	if (const FAlgoInfo* Algo = Api->SelectedAlgorithm(Config.AlgoId))
+	SyncAlgoParamsToSchema();
+
+	const FAlgoInfo* Algo = Api->SelectedAlgorithm(Config.AlgoId);
+	if (!Algo)
 	{
-		for (const FAlgoParam& Param : Algo->Params)
+		AgentBox->AddSlot().AutoHeight().Padding(FMargin(0.f, 8.f, 0.f, 0.f))
+		[Text(LOCTEXT("NoAlgo", "目录里没有这个算法").ToString(), 10, false, ColWarn)];
+		return;
+	}
+	if (Algo->Params.Num() == 0)
+	{
+		AgentBox->AddSlot().AutoHeight().Padding(FMargin(0.f, 8.f, 0.f, 0.f))
+		[Text(LOCTEXT("NoParams", "该算法没有可调参数").ToString(), 10, false, ColDim)];
+		return;
+	}
+
+	// Grouping and ordering come from the schema: params are emitted in
+	// declaration order, and a group heading appears the first time a group is
+	// met. A parameter with no group is emitted where it is declared, without a
+	// heading, so a schema that declares no groups renders as a flat list.
+	FString CurrentGroup;
+	bool bFirstGroup = true;
+	for (const FAlgoParam& Param : Algo->Params)
+	{
+		if (Param.Group != CurrentGroup)
 		{
-			if (Param.Type != TEXT("enum") || Param.Key != TEXT("behavior"))
+			CurrentGroup = Param.Group;
+			if (!CurrentGroup.IsEmpty())
 			{
-				continue;
-			}
-			for (const FAlgoOption& Option : Param.Options)
-			{
-				const FString Value = Option.Value;
-				BehaviourWrap->AddSlot()
+				AgentBox->AddSlot().AutoHeight()
+					.Padding(FMargin(0.f, bFirstGroup ? 8.f : 12.f, 0.f, 2.f))
 				[
-					Chip(Option.Label, Value == Config.Behavior, [this, Value]()
-					{
-						Config.Behavior = Value;
-						RebuildAgent();
-					})
+					Text(CurrentGroup, 9, true, ColDim)
 				];
 			}
+			else if (bFirstGroup)
+			{
+				// no heading, but keep the block off the hint paragraph
+				AgentBox->AddSlot().AutoHeight()[Spacer(1.f)];
+			}
 		}
+		AgentBox->AddSlot().AutoHeight().Padding(FMargin(0.f, 5.f, 0.f, 0.f))
+		[AlgoParamRow(Param)];
+		bFirstGroup = false;
 	}
-	AgentBox->AddSlot().AutoHeight().Padding(FMargin(0.f, 8.f, 0.f, 0.f))
-	[
-		SNew(SHorizontalBox)
-		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin(0.f, 0.f, 8.f, 0.f))
-		[Text(LOCTEXT("Behaviour", "驾驶风格").ToString(), 10, false, ColMuted)]
-		+ SHorizontalBox::Slot().FillWidth(1.f)[BehaviourWrap]
-	];
-
-	AgentBox->AddSlot().AutoHeight().Padding(FMargin(0.f, 8.f, 0.f, 0.f))
-	[SliderRow(LOCTEXT("TargetSpeed", "目标速度").ToString(), 10.f, 130.f, 5.f,
-		Config.TargetSpeedKmh, TEXT("km/h"))];
-
-	AgentBox->AddSlot().AutoHeight().Padding(FMargin(0.f, 6.f, 0.f, 0.f))
-	[CheckRow(LOCTEXT("IgnoreLights", "忽略红绿灯").ToString(), Config.bIgnoreTrafficLights)];
-	AgentBox->AddSlot().AutoHeight().Padding(FMargin(0.f, 3.f, 0.f, 0.f))
-	[CheckRow(LOCTEXT("IgnoreVehicles", "忽略其他车辆").ToString(), Config.bIgnoreVehicles)];
-	AgentBox->AddSlot().AutoHeight().Padding(FMargin(0.f, 3.f, 0.f, 0.f))
-	[CheckRow(LOCTEXT("IgnoreSigns", "忽略停车标志").ToString(), Config.bIgnoreStopSigns)];
 }
 
 void STestPlatformUI::RebuildRunSettings()
@@ -1473,19 +1695,36 @@ void STestPlatformUI::StartSessionNow()
 	}
 	bBusy = true;
 	SetStatus(LOCTEXT("Starting", "启动主车…").ToString());
-	Api->StartSession(SessionId, [this](bool bOk, const FSessionStatus& Status, const FString& Error)
+	// The session config was posted when the map was previewed, and /start builds
+	// the agent from *that* copy: parameter edits made after the preview would be
+	// invisible to it. Push the current parameter block first, so what starts is
+	// what the panel shows. A failed push is reported, never silently skipped --
+	// starting with stale parameters and calling it success is the bug this
+	// whole change exists to remove.
+	Api->SetAlgorithm(SessionId, Config,
+		[this](bool bOk, const FString& Error)
 	{
-		bBusy = false;
-		if (bOk)
+		if (!bOk)
 		{
-			Session = Status;
-			SetUIVisible(false); // the world takes the screen
-			SetStatus(LOCTEXT("Running3", "运行中").ToString());
+			bBusy = false;
+			SetStatus(FString::Printf(TEXT("启动失败：参数未能下发（%s）"), *Error), true);
+			return;
 		}
-		else
+		Api->StartSession(SessionId,
+			[this](bool bStarted, const FSessionStatus& Status, const FString& StartError)
 		{
-			SetStatus(FString::Printf(TEXT("启动失败：%s"), *Error), true);
-		}
+			bBusy = false;
+			if (bStarted)
+			{
+				Session = Status;
+				SetUIVisible(false); // the world takes the screen
+				SetStatus(LOCTEXT("Running3", "运行中").ToString());
+			}
+			else
+			{
+				SetStatus(FString::Printf(TEXT("启动失败：%s"), *StartError), true);
+			}
+		});
 	});
 }
 
@@ -1590,9 +1829,11 @@ void STestPlatformUI::ReloadCatalog()
 	LastCatalogAttemptAt = FPlatformTime::Seconds();
 	if (Api.IsValid())
 	{
+		// No "rebuild on the next tick" flag here: the next tick would rebuild
+		// from the cache that has not been replaced yet. TickRefresh rebuilds
+		// when CatalogRevision() moves, which is when the answer has landed.
 		Api->LoadCatalog();
 	}
-	bListsBuilt = false;
 }
 
 bool STestPlatformUI::IsBackendReady() const
@@ -1847,11 +2088,6 @@ void STestPlatformUI::UpdateChrome()
 			: (Session.IsRunning() ? LOCTEXT("Running2", "运行中 · 返回配置")
 				: LOCTEXT("Enter2", "进入 CARLA 世界 →")));
 	}
-	if (SpeedValueText.IsValid())
-	{
-		SpeedValueText->SetText(FText::FromString(
-			FString::Printf(TEXT("%.0f km/h"), Config.TargetSpeedKmh)));
-	}
 }
 
 FString STestPlatformUI::StateText(const FString& State) const
@@ -1921,7 +2157,6 @@ void STestPlatformUI::RebuildAll()
 	RebuildAgent();
 	RebuildRunSettings();
 	RebuildSummary();
-	bListsBuilt = true;
 
 	// open on the overview: the default map is already loaded by the simulator,
 	// so this is cheap and the panel starts with the whole map in view
@@ -1940,8 +2175,14 @@ EActiveTimerReturnType STestPlatformUI::TickRefresh(double Time, float DeltaTime
 	const double Now = FPlatformTime::Seconds();
 	const bool bReady = Api->IsReady();
 	const bool bReachable = IsBackendReachable();
-	if (bReady && !bListsBuilt)
+	// Rebuild when the catalog itself moved, not "once, the first time it was
+	// ready": a /algorithms answer that declares new parameters (or a whole new
+	// algorithm) has to re-render the panel without an editor restart, and that
+	// is exactly what a revision bump means. It also covers the first load, since
+	// the initial revision is 0 and the first answer makes it 1.
+	if (bReady && Api->CatalogRevision() != LastCatalogRevision)
 	{
+		LastCatalogRevision = Api->CatalogRevision();
 		RebuildAll();
 	}
 	// The backend may come up after Construct: the module spawns it at ~10 s, or

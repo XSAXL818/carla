@@ -103,9 +103,30 @@ private:
 	TSharedRef<SWidget> MapCard(const FMapInfo& Map, bool bSelected, TFunction<void()> OnClicked);
 	TSharedRef<SWidget> VehicleCard(const FVehicleInfo& Vehicle, bool bSelected,
 		TFunction<void()> OnClicked);
-	TSharedRef<SWidget> SliderRow(const FString& Label, float Min, float Max, float Step,
-		float& Value, const FString& Unit);
-	TSharedRef<SWidget> CheckRow(const FString& Label, bool& Flag);
+	/**
+	 * One algorithm parameter, rendered from its schema entry alone. Dispatches
+	 * on FAlgoParam::Type: enum -> chip row, number -> slider (or a numeric row
+	 * when the schema declared no range), bool -> checkbox row, anything else ->
+	 * read-only row plus one log line. No parameter key is special-cased here,
+	 * so a new algorithm or parameter needs no C++ change.
+	 */
+	TSharedRef<SWidget> AlgoParamRow(const FAlgoParam& Param);
+	TSharedRef<SWidget> EnumParamRow(const FAlgoParam& Param);
+	TSharedRef<SWidget> NumberParamRow(const FAlgoParam& Param);
+	TSharedRef<SWidget> BoolParamRow(const FAlgoParam& Param);
+	TSharedRef<SWidget> UnknownParamRow(const FAlgoParam& Param);
+	/** The value the row shows and the config will carry: the user's if they
+	 *  touched it, the schema default otherwise. */
+	FAlgoParamValue ResolvedParam(const FAlgoParam& Param) const;
+	void SetParamNumber(const FAlgoParam& Param, float Value);
+	void SetParamBool(const FAlgoParam& Param, bool bValue);
+	void SetParamString(const FAlgoParam& Param, const FString& Value);
+	/**
+	 * Keep the stored values in step with the selected algorithm's schema:
+	 * values whose key the new schema still declares are kept, the rest are
+	 * dropped (and logged), so switching algorithms cannot send a stale key.
+	 */
+	void SyncAlgoParamsToSchema();
 	TSharedRef<SWidget> KV(const FString& Key, const FString& Value);
 
 	// ---- data
@@ -182,9 +203,10 @@ private:
 	TSharedPtr<STextBlock> MapChipText;
 	TSharedPtr<STextBlock> WeatherChipText;
 	TSharedPtr<STextBlock> CaptionText;
-	TSharedPtr<STextBlock> SpeedValueText;
 
 	TMap<FString, TSharedPtr<FSlateBrush>> ThumbCache;
+	/** Schema types this build has no control for: logged once each, never per frame. */
+	TSet<FString> UnknownParamTypesLogged;
 	/** Rooted so GC cannot free a texture the brush still paints (crash in SImage). */
 	TArray<TStrongObjectPtr<class UTexture2D>> ThumbTextures;
 	TSet<FString> ThumbPending;
@@ -196,7 +218,8 @@ private:
 	bool bUIVisible = true;
 	bool bBusy = false;
 	bool bLoadingMap = false;
-	bool bListsBuilt = false;
+	/** Catalog revision the lists were last built from (see TickRefresh). */
+	uint64 LastCatalogRevision = 0;
 	bool bLastBackendReady = false;
 	/** last chrome state pushed to the top bar: did /health answer? */
 	bool bLastBackendReachable = false;

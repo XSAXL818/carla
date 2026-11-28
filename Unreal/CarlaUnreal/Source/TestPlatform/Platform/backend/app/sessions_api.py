@@ -107,6 +107,22 @@ def set_route(session_id: str, body: dict = Body(default={})):
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
+@router.post("/{session_id}/algorithm")
+def set_algorithm(session_id: str, body: dict = Body(default={})):
+    """Replace the session's algorithm + parameter block before /start.
+
+    The panel renders its controls from /algorithms and the user can move them
+    after the map preview has been posted; /start builds the agent from the
+    config the backend holds, so the parameters have to be pushed here or the
+    run would use whatever the preview carried. No map load, no world change.
+    """
+    try:
+        session = session_runner.manager.get(session_id)
+        return session.set_algorithm(body.get("id"), body.get("params"))
+    except session_runner.SessionError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 @router.post("/{session_id}/preview")
 def preview_session(session_id: str):
     """Load the map and park the car: the 'select a map' step."""

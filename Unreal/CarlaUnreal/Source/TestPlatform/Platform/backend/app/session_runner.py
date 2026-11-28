@@ -59,6 +59,178 @@ def _carla():
     return carla
 
 
+# --------------------------------------------------------------------------- #
+# algorithm parameters -> the CARLA agent library
+#
+# The panel renders and posts whatever an algorithm's schema declares, so this
+# module has to be equally schema-blind: every key it receives is offered to the
+# agent. Only *names* are translated, because the library spells two of them
+# differently. That translation is a rename table, not an allow-list: a key that
+# is not listed is forwarded under its own name, and a key the agent turns out
+# not to consume is reported in the session events instead of vanishing.
+# --------------------------------------------------------------------------- #
+_AGENT_PARAM_ALIASES: dict[str, tuple[str, ...]] = {
+    # schema key -> the names the agent library knows it under
+    "target_speed_kmh": ("target_speed",),
+    # BasicAgent caches `_sampling_resolution` for its GlobalRoutePlanner while
+    # its LocalPlanner reads `sampling_radius` for the queue it actually grows;
+    # both have to be set or the two disagree.
+    "sampling_resolution": ("sampling_resolution", "sampling_radius"),
+}
+
+
+def _agent_param_names(key: str) -> list[str]:
+    names = [key]
+    for alias in _AGENT_PARAM_ALIASES.get(key, ()):
+        if alias not in names:
+            names.append(alias)
+    return names
+
+
+def _ctor_split(cls, params: dict) -> tuple[dict, dict, set[str]]:
+    """Split schema params into ``__init__`` kwargs, ``opt_dict`` entries, and
+    the schema keys the constructor itself takes.
+
+    The constructor's own signature decides what is a keyword argument, so a new
+    agent class with a new first-class parameter needs no change here.
+    """
+    import inspect  # noqa: PLC0415
+
+    try:
+        accepted = {
+            name for name in inspect.signature(cls.__init__).parameters
+            if name not in ("self", "vehicle", "opt_dict", "map_inst", "grp_inst")
+        }
+    except (TypeError, ValueError):  # noqa: BLE001  (builtins / C types)
+        accepted = set()
+
+    kwargs: dict[str, Any] = {}
+    opt_dict: dict[str, Any] = {}
+    direct: set[str] = set()
+    for key, value in params.items():
+        hit = next((name for name in _agent_param_names(key) if name in accepted), None)
+        if hit is not None:
+            kwargs[hit] = value
+            direct.add(key)
+            continue
+        # Everything else is offered to the agents' opt_dict, under every name
+        # the library may look it up by. Both BasicAgent and LocalPlanner ignore
+        # keys they do not know, so sending the aliases is safe. opt_dict alone
+        # is not trusted, though: BasicAgent.__init__ overwrites
+        # opt_dict['target_speed'] with its own positional default, which is why
+        # the setters are tried afterwards as well.
+        for name in _agent_param_names(key):
+            opt_dict[name] = value
+    return kwargs, opt_dict, direct
+
+
+def _value_kind(value: Any) -> str:
+    if isinstance(value, bool):
+        return "bool"
+    if isinstance(value, (int, float)):
+        return "number"
+    if isinstance(value, str):
+        return "str"
+    return "other"
+
+
+def _takes_one_positional(method) -> bool:
+    """True when ``method(value)`` is a sane call: one positional parameter."""
+    import inspect  # noqa: PLC0415
+
+    try:
+        params = list(inspect.signature(method).parameters.values())
+    except (TypeError, ValueError):  # noqa: BLE001  (C callables)
+        return True
+    positional = [
+        p for p in params
+        if p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)
+    ]
+    return 1 <= len(positional) <= 2 and not any(
+        p.kind == p.VAR_POSITIONAL for p in params)
+
+
+def _read_agent_param(agent, key: str) -> list[str]:
+    """Read the parameter back off the agent, so "applied" is not just a claim.
+
+    Returns ``holder.attr=value`` strings for every place the key is stored.
+    """
+    holders = [agent]
+    try:
+        planner = agent.get_local_planner()
+    except Exception:  # noqa: BLE001
+        planner = None
+    if planner is not None:
+        holders.append(planner)
+    out: list[str] = []
+    for holder in holders:
+        for name in _agent_param_names(key):
+            attr = f"_{name}"
+            if hasattr(holder, attr):
+                try:
+                    out.append(f"{type(holder).__name__}.{attr}={getattr(holder, attr)!r}")
+                except Exception:  # noqa: BLE001
+                    continue
+    return out
+
+
+def _apply_agent_param(agent, key: str, value: Any) -> list[str]:
+    """Apply one parameter to a built agent; return what took it.
+
+    Per holder, in order: a ``set_<name>`` method, a plain ``<name>`` method,
+    then the private ``_<name>`` attribute the agent library stores the value in.
+    Holders are the agent and its local planner, and every alias name is tried on
+    each, because the library splits one schema knob over both (the agent's
+    ``_sampling_resolution`` and its planner's ``_sampling_radius``).
+
+    The private-attribute write is guarded by type: ``_behavior`` holds a
+    Cautious/Normal/Aggressive object, not the schema's enum string, so a
+    blanket setattr would replace it with a str and break the agent's next
+    frame. Only a value of the same kind as the stored one is written.
+    """
+    holders = [agent]
+    try:
+        planner = agent.get_local_planner()
+    except Exception:  # noqa: BLE001
+        planner = None
+    if planner is not None:
+        holders.append(planner)
+
+    hits: list[str] = []
+    for holder in holders:
+        for name in _agent_param_names(key):
+            setter = getattr(holder, f"set_{name}", None)
+            if callable(setter) and _takes_one_positional(setter):
+                try:
+                    setter(value)
+                except Exception:  # noqa: BLE001
+                    continue
+                hits.append(f"{type(holder).__name__}.set_{name}()")
+                continue
+            plain = getattr(holder, name, None)
+            if callable(plain) and _takes_one_positional(plain):
+                try:
+                    plain(value)
+                except Exception:  # noqa: BLE001
+                    continue
+                hits.append(f"{type(holder).__name__}.{name}()")
+                continue
+            attr = f"_{name}"
+            if not hasattr(holder, attr):
+                continue
+            current = getattr(holder, attr)
+            if _value_kind(current) != _value_kind(value):
+                # e.g. _behavior (an object) vs the schema's "normal" string:
+                # this attribute is not where that parameter lives.
+                continue
+            try:
+                setattr(holder, attr, value)
+            except Exception:  # noqa: BLE001
+                continue
+            hits.append(f"{type(holder).__name__}.{attr}")
+    return hits
+
+
 class SessionError(RuntimeError):
     pass
 
@@ -1141,6 +1313,24 @@ class Session:
         self._route_points = [waypoint.transform.location for waypoint, _opt in self._plan]
         self._route_color = _carla().Color(255, 180, 84)
 
+    def set_algorithm(self, algo_id: str | None, params: dict | None) -> dict:
+        """Replace the algorithm and its parameter block on a live session.
+
+        Only legal before the run starts: once ``self.agent`` exists the
+        parameters have already been handed to it, and silently accepting a new
+        set would make /sessions/current claim values the car is not driving by.
+        """
+        if self.state in ("running", "preview_loading"):
+            raise SessionError(f"当前状态 {self.state} 不能改算法参数，请先停止")
+        algo = self.config.setdefault("algorithm", {})
+        if algo_id:
+            algo["id"] = str(algo_id)
+        if params is not None:
+            # Stored verbatim: this module does not decide which keys exist, the
+            # algorithm's schema does (see catalog.ALGORITHMS).
+            algo["params"] = dict(params)
+        return self.status()
+
     def set_weather(self, preset: str, custom: dict | None = None) -> dict:
         """Apply weather to the live world (preview keeps running, so it is visible)."""
         weather = self.config.setdefault("weather", {})
@@ -1239,11 +1429,59 @@ class Session:
             self.events.append({"t": self.sim_time, "kind": "traffic_manager_error",
                                 "detail": str(exc)})
 
+    def _instantiate_agent(self, AgentClass, algo_id: str, params: dict):
+        """Build one agent from the schema params, applying every key it carries.
+
+        No key is special-cased: the constructor signature takes what it accepts
+        (renaming through _AGENT_PARAM_ALIASES where the library spells a key
+        differently), everything else is offered to opt_dict, and every key is
+        then re-applied through the agent's own setter or its planner's. The
+        re-apply is not redundant: BasicAgent.__init__ overwrites
+        opt_dict['target_speed'] with its own positional default, so passing it
+        through opt_dict alone leaves the configured speed unapplied. A
+        parameter nothing consumes is written to the session events, so a
+        schema/agent mismatch is visible in /sessions/current instead of
+        quietly doing nothing.
+        """
+        ctor_kwargs, opt_dict, direct = _ctor_split(AgentClass, params)
+        agent = AgentClass(self.ego, opt_dict=dict(opt_dict), **ctor_kwargs)
+
+        applied: dict[str, str] = {}
+        for key, value in params.items():
+            hits = _apply_agent_param(agent, key, value)
+            if not hits:
+                if key in direct:
+                    # the constructor itself took it as a keyword argument
+                    applied[key] = f"{AgentClass.__name__}(…)"
+                    continue
+                detail = (f"{algo_id}：参数 '{key}' = {value!r} 未被该算法消费"
+                          f"（agent 与其 local planner 都没有 set_{key} / _{key}）")
+                self.events.append({"t": self.sim_time, "kind": "agent_param_unused",
+                                    "detail": detail})
+                print(f"[session {self.id}] {detail}", flush=True)
+                continue
+            applied[key] = "、".join(hits)
+
+        if params:
+            detail = (f"算法参数：{len(applied)}/{len(params)} 项已应用 —— " +
+                      "，".join(f"{k}={params[k]!r} → {applied[k]}"
+                               for k in params if k in applied))
+            self.events.append({"t": self.sim_time, "kind": "agent_params",
+                                "detail": detail})
+            print(f"[session {self.id}] {detail}", flush=True)
+            # Read back what the agent now holds: the applied/hit list above only
+            # says which code path ran, this says what the agent will act on.
+            readback = {key: _read_agent_param(agent, key) for key in params}
+            self.events.append({"t": self.sim_time, "kind": "agent_params_readback",
+                                "detail": readback})
+            print(f"[session {self.id}] 参数回读：{readback}", flush=True)
+        return agent
+
     def _build_agent(self):
         """Instantiate the configured agent and point it at the route end."""
         algo = self.config.get("algorithm", {})
         algo_id = algo.get("id", "carla.behavior")
-        params = algo.get("params", {}) or {}
+        params = dict(algo.get("params") or {})
 
         # The wheel has no `carla.agents`; the agents live in PythonAPI/carla,
         # and the path insert happens in _import_agents() before any import.
@@ -1253,26 +1491,12 @@ class Session:
         try:
             if "basic" in algo_id:
                 BasicAgent = load("agents.navigation.basic_agent", "BasicAgent")
-                agent = BasicAgent(
-                    self.ego,
-                    target_speed=float(params.get("target_speed_kmh", 50.0)),
-                    opt_dict={"sampling_radius": float(params.get("sampling_resolution", 2.0))},
-                )
+                agent = self._instantiate_agent(BasicAgent, algo_id, params)
             else:
                 BehaviorAgent = load("agents.navigation.behavior_agent", "BehaviorAgent")
-                agent = BehaviorAgent(self.ego, behavior=params.get("behavior", "normal"))
-                for flag, setter in (
-                    ("ignore_traffic_lights", "ignore_traffic_lights"),
-                    ("ignore_stop_signs", "ignore_stop_signs"),
-                    ("ignore_vehicles", "ignore_vehicles"),
-                ):
-                    if params.get(flag):
-                        getattr(agent, setter)(True)
-                if "target_speed_kmh" in params:
-                    try:
-                        agent.set_target_speed(float(params["target_speed_kmh"]))
-                    except Exception:  # noqa: BLE001
-                        pass
+                agent = self._instantiate_agent(BehaviorAgent, algo_id, params)
+        except SessionError:
+            raise
         except Exception as exc:  # noqa: BLE001
             raise SessionError(f"算法 {algo_id} 初始化失败：{exc}") from exc
 
@@ -1320,16 +1544,19 @@ class Session:
         print(f"[session {self.id}] {detail}", flush=True)
 
     def _make_basic_agent(self):
-        params = (self.config.get("algorithm", {}).get("params") or {})
+        """Fallback lane follower, built from the *same* schema params.
+
+        The fallback exists because a BehaviorAgent with an empty plan just
+        brakes; it must still honour the configured parameters, otherwise
+        switching the algorithm's knobs would silently stop mattering at the
+        exact moment the run degraded.
+        """
+        params = dict(self.config.get("algorithm", {}).get("params") or {})
         try:
             BasicAgent = self._import_agents("agents.navigation.basic_agent", "BasicAgent")
         except Exception as exc:  # noqa: BLE001
             raise SessionError(f"BasicAgent 不可用：{exc}") from exc
-        return BasicAgent(
-            self.ego,
-            target_speed=float(params.get("target_speed_kmh", 50.0)),
-            opt_dict={"sampling_radius": 2.0},
-        )
+        return self._instantiate_agent(BasicAgent, "carla.basic(回退)", params)
 
     def stop(self) -> dict:
         if self.state in ("stopped", "finished"):
@@ -1692,6 +1919,15 @@ class Session:
                 "spawn": self.spawn_pose,
             },
             "preview_degraded": self.preview_degraded,
+            # What the backend actually received for the algorithm, echoed back
+            # verbatim: the panel posts whatever the schema declared, and this is
+            # the one place that shows the round trip instead of the panel's own
+            # idea of it. (What the *agent* then consumed is in the events, as
+            # `agent_params` / `agent_param_unused`.)
+            "algorithm": {
+                "id": self.config.get("algorithm", {}).get("id"),
+                "params": self.config.get("algorithm", {}).get("params") or {},
+            },
             # The clock the session is *really* running at, so the panel can show
             # a live sync chip and stop showing one once the simulator has
             # dropped synchronous mode.

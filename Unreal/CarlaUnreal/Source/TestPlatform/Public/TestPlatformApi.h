@@ -51,21 +51,67 @@ struct FAlgoOption
 	FString Label;
 };
 
+/**
+ * One parameter of an algorithm, exactly as GET /algorithms describes it.
+ *
+ * Nothing here names a specific parameter: the panel dispatches on Type and
+ * renders from Group / Min / Max / Step / Unit / Default, so a new algorithm or
+ * a new parameter only needs the backend catalogue changed.
+ */
 struct FAlgoParam
 {
 	FString Key;
 	FString Label;
-	FString Type;      // enum | number | bool
+	/** enum | number | bool. Any other value is rendered read-only (see
+	 *  STestPlatformUI::UnknownParamRow) instead of being dropped or crashing. */
+	FString Type;
 	FString Unit;
+	/** Schema grouping; empty means "no group heading". */
 	FString Group;
 	float Min = 0.f;
 	float Max = 100.f;
 	float Step = 1.f;
+	/** True when the schema carried both min and max, i.e. a slider is possible. */
+	bool bHasRange = false;
 	float NumberDefault = 0.f;
 	bool bBoolDefault = false;
 	FString StringDefault;
 	TArray<FAlgoOption> Options;
 };
+
+/**
+ * One algorithm parameter's value as the panel holds it.
+ *
+ * Which field matters is decided by the schema's Type, never by the key, so the
+ * panel can carry parameters it has never heard of.
+ */
+struct FAlgoParamValue
+{
+	/** The schema Type this value was created for, so a value cannot be read
+	 *  back as the wrong kind after the schema changed underneath it. */
+	FString Type;
+	FString StringValue; // enum (and any string-shaped type)
+	float Number = 0.f;
+	bool bBool = false;
+	/** True once the user moved the control. False means "still the schema
+	 *  default", which is what makes switching algorithms pick up the new
+	 *  schema's default instead of the old algorithm's value. */
+	bool bUserSet = false;
+};
+
+/** The schema's default for one parameter. */
+FAlgoParamValue DefaultAlgoParamValue(const FAlgoParam& Param);
+
+/**
+ * The value the config must carry for Param: the user's when they set one, the
+ * schema default otherwise. The panel renders with this same call, so what the
+ * user sees and what is posted cannot drift apart.
+ */
+FAlgoParamValue ResolveAlgoParamValue(const FAlgoParam& Param,
+	const TMap<FString, FAlgoParamValue>& Values);
+
+/** The schema's label, or a readable fallback derived from the key. */
+FString AlgoParamLabel(const FAlgoParam& Param);
 
 struct FAlgoInfo
 {
@@ -84,11 +130,12 @@ struct FPlatformSelection
 	FString WeatherId;
 	FString TrafficId;
 	FString AlgoId;
-	FString Behavior = TEXT("normal");
-	float TargetSpeedKmh = 50.f;
-	bool bIgnoreTrafficLights = false;
-	bool bIgnoreStopSigns = false;
-	bool bIgnoreVehicles = false;
+	/**
+	 * Every algorithm parameter the selected algorithm's schema declared, keyed
+	 * by the schema key. There is no per-parameter field: adding a parameter is a
+	 * backend-only change (see FAlgoParam).
+	 */
+	TMap<FString, FAlgoParamValue> AlgoParams;
 };
 
 /** Live session state polled from the backend. */
@@ -175,6 +222,18 @@ public:
 	/** True while the five catalog requests of a LoadCatalog() call are still outstanding. */
 	bool IsCatalogLoadInFlight() const { return PendingCatalogRequests > 0; }
 
+	/**
+	 * Bumped every time a /algorithms answer has been parsed into AlgoCache.
+	 *
+	 * The panel rebuilds its lists from this rather than from "the catalog was
+	 * loaded once": ReloadCatalog() used to clear the built flag, which made the
+	 * very next tick rebuild from the *old* cache (the new answer had not arrived
+	 * yet), so a schema change on the backend never reached the panel without an
+	 * editor restart. A revision the answers themselves advance cannot race that
+	 * way.
+	 */
+	uint64 CatalogRevision() const { return AlgoCatalogRevision; }
+
 	bool IsReady() const { return bReady; }
 	const TArray<FMapInfo>& Maps() const { return MapsCache; }
 	const TArray<FVehicleInfo>& Vehicles() const { return VehiclesCache; }
@@ -202,6 +261,15 @@ public:
 	void FetchBytes(const FString& Path, TFunction<void(bool, const TArray<uint8>&)> Done);
 	/** Live control of the running preview: weather and route overlay. */
 	void SetWeather(const FString& SessionId, const FString& Preset, FSimpleCallback Done);
+	/**
+	 * Replace the live session's algorithm + parameter block without reloading
+	 * anything. The panel's controls can be changed after the map preview has
+	 * been posted, and /start builds the agent from the config the backend
+	 * holds -- so without this the parameters a user sees are not the ones that
+	 * run. Same schema-driven payload as the config (see BuildAlgorithmJson).
+	 */
+	void SetAlgorithm(const FString& SessionId, const FPlatformSelection& Selection,
+		FSimpleCallback Done);
 	void SetRoute(const FString& SessionId, bool bVisible, bool bApplyVisible,
 		const FString& PresetId, FSimpleCallback Done);
 	void PreviewSession(const FString& SessionId, FStatusCallback Done);
@@ -216,6 +284,8 @@ private:
 	void PostJson(const FString& Path, const FString& Body,
 		TFunction<void(bool, const TSharedPtr<FJsonObject>&, const FString&)> Done);
 	FString BuildConfigJson(const FPlatformSelection& Selection) const;
+	/** {"id":..., "params":{...}} straight from the selected algorithm's schema. */
+	FString BuildAlgorithmJson(const FPlatformSelection& Selection) const;
 	static FSessionStatus ParseStatus(const TSharedPtr<class FJsonObject>& Root);
 
 	TArray<FMapInfo> MapsCache;
@@ -223,6 +293,8 @@ private:
 	TArray<FWeatherInfo> WeatherCache;
 	TArray<FTrafficInfo> TrafficCache;
 	TArray<FAlgoInfo> AlgoCache;
+	/** Advanced by every parsed /algorithms answer; see CatalogRevision(). */
+	uint64 AlgoCatalogRevision = 0;
 	TMap<FString, TArray<FMapPreset>> PresetsByMap;
 	bool bReady = false;
 	/** outcome of the last GET /health: the backend process answered (2xx JSON) */

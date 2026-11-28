@@ -46,6 +46,100 @@ namespace
 	{
 		return (Value.IsValid() && Value->Type == EJson::Object) ? Value->AsObject() : nullptr;
 	}
+
+	/** True when the object carries this key at all (a schema may omit min/max). */
+	bool HasField(const TSharedPtr<FJsonObject>& Obj, const TCHAR* Key)
+	{
+		return Obj.IsValid() && Obj->HasField(Key);
+	}
+
+	/** One number as JSON, without the trailing zeros Printf's %f would add. */
+	FString JsonNumber(float Value)
+	{
+		FString Out = FString::Printf(TEXT("%g"), Value);
+		if (Out == TEXT("-0"))
+		{
+			Out = TEXT("0");
+		}
+		return Out;
+	}
+
+	/** A JSON string literal, quotes and backslashes escaped. */
+	FString JsonString(const FString& Value)
+	{
+		FString Out = Value;
+		Out.ReplaceInline(TEXT("\\"), TEXT("\\\\"));
+		Out.ReplaceInline(TEXT("\""), TEXT("\\\""));
+		return FString::Printf(TEXT("\"%s\""), *Out);
+	}
+}
+
+// ---------------------------------------------------------------------- //
+// algorithm parameters: the schema is the only source of truth
+// ---------------------------------------------------------------------- //
+FAlgoParamValue DefaultAlgoParamValue(const FAlgoParam& Param)
+{
+	FAlgoParamValue Value;
+	Value.Type = Param.Type;
+	if (Param.Type == TEXT("number"))
+	{
+		Value.Number = Param.NumberDefault;
+	}
+	else if (Param.Type == TEXT("bool"))
+	{
+		Value.bBool = Param.bBoolDefault;
+	}
+	else
+	{
+		// enum and every string-shaped type: the schema's own default, verbatim.
+		Value.StringValue = Param.StringDefault;
+		if (Param.Type == TEXT("enum") && Value.StringValue.IsEmpty() && Param.Options.Num() > 0)
+		{
+			// A schema that declares an enum without a default still has to render
+			// as something selected; the first option is the only defensible pick.
+			Value.StringValue = Param.Options[0].Value;
+		}
+	}
+	return Value;
+}
+
+FAlgoParamValue ResolveAlgoParamValue(const FAlgoParam& Param,
+	const TMap<FString, FAlgoParamValue>& Values)
+{
+	if (const FAlgoParamValue* Found = Values.Find(Param.Key))
+	{
+		if (Found->bUserSet && Found->Type == Param.Type)
+		{
+			return *Found;
+		}
+	}
+	return DefaultAlgoParamValue(Param);
+}
+
+FString AlgoParamLabel(const FAlgoParam& Param)
+{
+	if (!Param.Label.IsEmpty())
+	{
+		return Param.Label;
+	}
+	// No label in the schema: turn the key into something readable instead of
+	// printing "target_speed_kmh" at the user.
+	FString Out;
+	Out.Reserve(Param.Key.Len());
+	bool bUpperNext = true;
+	for (const TCHAR Ch : Param.Key)
+	{
+		if (Ch == TEXT('_') || Ch == TEXT('-') || Ch == TEXT('.'))
+		{
+			bUpperNext = true;
+			Out.AppendChar(TEXT(' '));
+			continue;
+		}
+		Out.AppendChar(bUpperNext ? FChar::ToUpper(Ch) : Ch);
+		bUpperNext = false;
+	}
+	Out.TrimStartAndEndInline();
+	return Out.IsEmpty() ? Param.Key : Out;
 }
 
 FString FTestPlatformApi::RootUrl()
@@ -316,6 +410,13 @@ void FTestPlatformApi::LoadCatalog()
 		{
 			return;
 		}
+		// A failed request is not a schema change: leave both the cache and the
+		// revision alone, so the panel keeps rendering the last good schema
+		// instead of emptying the parameter block.
+		if (!bOk)
+		{
+			return;
+		}
 		This->AlgoCache.Reset();
 		if (const TArray<TSharedPtr<FJsonValue>>* Items = ArrayField(Root, TEXT("algorithms")))
 		{
@@ -345,9 +446,17 @@ void FTestPlatformApi::LoadCatalog()
 						Param.Type = StringField(ParamObj, TEXT("type"));
 						Param.Unit = StringField(ParamObj, TEXT("unit"));
 						Param.Group = StringField(ParamObj, TEXT("group"));
+						// min/max are optional in the schema: only a parameter that
+						// carries both can be a slider. Absent, the row falls back to
+						// a numeric read-only-ish stepper rather than inventing 0..100.
+						Param.bHasRange = HasField(ParamObj, TEXT("min")) && HasField(ParamObj, TEXT("max"));
 						Param.Min = static_cast<float>(NumberField(ParamObj, TEXT("min")));
 						Param.Max = static_cast<float>(NumberField(ParamObj, TEXT("max"), 100.0));
 						Param.Step = static_cast<float>(NumberField(ParamObj, TEXT("step"), 1.0));
+						if (Param.Step <= 0.f)
+						{
+							Param.Step = 1.f;
+						}
 						if (Param.Type == TEXT("number"))
 						{
 							Param.NumberDefault = static_cast<float>(NumberField(ParamObj, TEXT("default")));
@@ -362,22 +471,44 @@ void FTestPlatformApi::LoadCatalog()
 						}
 						else
 						{
-							Param.StringDefault = StringField(ParamObj, TEXT("default"));
-							if (const TArray<TSharedPtr<FJsonValue>>* Options =
-									ArrayField(ParamObj, TEXT("options")))
+							// enum / string / anything else string-shaped. A schema
+							// may still put a number or bool in `default` for a type
+							// this build does not know, so read whatever is there.
+							if (!ParamObj->TryGetStringField(TEXT("default"), Param.StringDefault))
 							{
-								for (const TSharedPtr<FJsonValue>& OptionValue : *Options)
+								double NumberDefault = 0.0;
+								bool bBoolValue = false;
+								if (ParamObj->TryGetNumberField(TEXT("default"), NumberDefault))
 								{
-									const TSharedPtr<FJsonObject> OptionObj = AsObject(OptionValue);
-									if (!OptionObj.IsValid())
-									{
-										continue;
-									}
-									FAlgoOption Option;
-									Option.Value = StringField(OptionObj, TEXT("value"));
-									Option.Label = StringField(OptionObj, TEXT("label"));
-									Param.Options.Add(Option);
+									Param.StringDefault = FString::Printf(TEXT("%g"),
+										static_cast<float>(NumberDefault));
 								}
+								else if (ParamObj->TryGetBoolField(TEXT("default"), bBoolValue))
+								{
+									Param.StringDefault = bBoolValue ? TEXT("true") : TEXT("false");
+								}
+							}
+						}
+						// options are read for every type: an enum is not the only
+						// type a future schema may attach them to.
+						if (const TArray<TSharedPtr<FJsonValue>>* Options =
+								ArrayField(ParamObj, TEXT("options")))
+						{
+							for (const TSharedPtr<FJsonValue>& OptionValue : *Options)
+							{
+								const TSharedPtr<FJsonObject> OptionObj = AsObject(OptionValue);
+								if (!OptionObj.IsValid())
+								{
+									continue;
+								}
+								FAlgoOption Option;
+								Option.Value = StringField(OptionObj, TEXT("value"));
+								Option.Label = StringField(OptionObj, TEXT("label"));
+								if (Option.Label.IsEmpty())
+								{
+									Option.Label = Option.Value;
+								}
+								Param.Options.Add(Option);
 							}
 						}
 						Info.Params.Add(Param);
@@ -386,6 +517,9 @@ void FTestPlatformApi::LoadCatalog()
 				This->AlgoCache.Add(Info);
 			}
 		}
+		// Only an answer that parsed advances the revision: a failed request must
+		// not look like a schema change, and the panel rebuilds on a bump.
+		++This->AlgoCatalogRevision;
 	});
 }
 
@@ -514,6 +648,52 @@ const FAlgoInfo* FTestPlatformApi::SelectedAlgorithm(const FString& AlgoId) cons
 // ---------------------------------------------------------------------- //
 // session lifecycle
 // ---------------------------------------------------------------------- //
+FString FTestPlatformApi::BuildAlgorithmJson(const FPlatformSelection& Selection) const
+{
+	const FString Algo = Selection.AlgoId.IsEmpty()
+		? TEXT("carla.behavior") : Selection.AlgoId;
+
+	// The parameter block is emitted straight from the selected algorithm's
+	// schema: one key per declared parameter, in declaration order, with the
+	// schema default wherever the user has not touched the control. No
+	// parameter name appears here, so a new algorithm or parameter needs no
+	// C++ change.
+	FString ParamsJson = TEXT("{");
+	bool bFirstParam = true;
+	if (const FAlgoInfo* Selected = SelectedAlgorithm(Algo))
+	{
+		for (const FAlgoParam& Param : Selected->Params)
+		{
+			if (Param.Key.IsEmpty())
+			{
+				continue; // nothing to send it under
+			}
+			const FAlgoParamValue Value = ResolveAlgoParamValue(Param, Selection.AlgoParams);
+			FString Encoded;
+			if (Param.Type == TEXT("number"))
+			{
+				Encoded = JsonNumber(Value.Number);
+			}
+			else if (Param.Type == TEXT("bool"))
+			{
+				Encoded = Value.bBool ? TEXT("true") : TEXT("false");
+			}
+			else
+			{
+				// enum / string / any unknown type: the schema default verbatim,
+				// never dropped and never guessed at.
+				Encoded = JsonString(Value.StringValue);
+			}
+			ParamsJson += FString::Printf(TEXT("%s%s:%s"),
+				bFirstParam ? TEXT("") : TEXT(","), *JsonString(Param.Key), *Encoded);
+			bFirstParam = false;
+		}
+	}
+	ParamsJson += TEXT("}");
+
+	return FString::Printf(TEXT("{\"id\":%s,\"params\":%s}"), *JsonString(Algo), *ParamsJson);
+}
+
 FString FTestPlatformApi::BuildConfigJson(const FPlatformSelection& Selection) const
 {
 	const FMapInfo* Map = FindMap(Selection.MapId);
@@ -521,12 +701,12 @@ FString FTestPlatformApi::BuildConfigJson(const FPlatformSelection& Selection) c
 	if (!Selection.RoutePresetId.IsEmpty())
 	{
 		RouteJson = FString::Printf(
-			TEXT("{\"source\":\"preset\",\"preset_id\":\"%s\"}"), *Selection.RoutePresetId);
+			TEXT("{\"source\":\"preset\",\"preset_id\":%s}"), *JsonString(Selection.RoutePresetId));
 	}
 	else if (Map && Map->Presets.Num() > 0)
 	{
 		RouteJson = FString::Printf(
-			TEXT("{\"source\":\"preset\",\"preset_id\":\"%s\"}"), *Map->Presets[0].Id);
+			TEXT("{\"source\":\"preset\",\"preset_id\":%s}"), *JsonString(Map->Presets[0].Id));
 	}
 
 	const FString Ego = Selection.EgoBlueprint.IsEmpty()
@@ -535,31 +715,23 @@ FString FTestPlatformApi::BuildConfigJson(const FPlatformSelection& Selection) c
 		? TEXT("ClearNoon") : Selection.WeatherId;
 	const FString Traffic = Selection.TrafficId.IsEmpty()
 		? TEXT("light") : Selection.TrafficId;
-	const FString Algo = Selection.AlgoId.IsEmpty()
-		? TEXT("carla.behavior") : Selection.AlgoId;
 
 	return FString::Printf(
-		TEXT("{\"schema_version\":1,\"map\":\"%s\",")
-		TEXT("\"ego\":{\"blueprint\":\"%s\",\"spawn\":{\"mode\":\"route_start\"}},")
+		TEXT("{\"schema_version\":1,\"map\":%s,")
+		TEXT("\"ego\":{\"blueprint\":%s,\"spawn\":{\"mode\":\"route_start\"}},")
 		TEXT("\"route\":%s,")
-		TEXT("\"weather\":{\"preset\":\"%s\"},")
-		TEXT("\"traffic\":{\"preset\":\"%s\",\"autopilot\":true,\"seed\":20261126},")
-		TEXT("\"algorithm\":{\"id\":\"%s\",\"params\":{\"behavior\":\"%s\",\"target_speed_kmh\":%.0f,")
-		TEXT("\"ignore_traffic_lights\":%s,\"ignore_stop_signs\":%s,\"ignore_vehicles\":%s}},")
+		TEXT("\"weather\":{\"preset\":%s},")
+		TEXT("\"traffic\":{\"preset\":%s,\"autopilot\":true,\"seed\":20261126},")
+		TEXT("\"algorithm\":%s,")
 		TEXT("\"run\":{\"sync_mode\":true,\"fixed_delta_seconds\":0.05,\"record\":true,")
 		TEXT("\"export\":{\"metrics_csv\":true,\"events_json\":true,\"config_json\":true},")
 		TEXT("\"max_duration_s\":300}}"),
-		*Selection.MapId,
-		*Ego,
+		*JsonString(Selection.MapId),
+		*JsonString(Ego),
 		*RouteJson,
-		*Weather,
-		*Traffic,
-		*Algo,
-		*Selection.Behavior,
-		Selection.TargetSpeedKmh,
-		Selection.bIgnoreTrafficLights ? TEXT("true") : TEXT("false"),
-		Selection.bIgnoreStopSigns ? TEXT("true") : TEXT("false"),
-		Selection.bIgnoreVehicles ? TEXT("true") : TEXT("false"));
+		*JsonString(Weather),
+		*JsonString(Traffic),
+		*BuildAlgorithmJson(Selection));
 }
 
 FSessionStatus FTestPlatformApi::ParseStatus(const TSharedPtr<FJsonObject>& Root)
@@ -735,6 +907,20 @@ void FTestPlatformApi::SetWeather(const FString& SessionId, const FString& Prese
 {
 	const FString Body = FString::Printf(TEXT("{\"preset\":\"%s\"}"), *Preset);
 	PostJson(FString::Printf(TEXT("/sessions/%s/weather"), *SessionId), Body,
+		[Done](bool bOk, const TSharedPtr<FJsonObject>&, const FString& Error)
+		{
+			if (Done)
+			{
+				Done(bOk, Error);
+			}
+		});
+}
+
+void FTestPlatformApi::SetAlgorithm(const FString& SessionId,
+	const FPlatformSelection& Selection, FSimpleCallback Done)
+{
+	PostJson(FString::Printf(TEXT("/sessions/%s/algorithm"), *SessionId),
+		BuildAlgorithmJson(Selection),
 		[Done](bool bOk, const TSharedPtr<FJsonObject>&, const FString& Error)
 		{
 			if (Done)
