@@ -1,0 +1,3 @@
+launching CARLA (editor/game path) 1280x720 screen=70 map=/Game/TestPlatform/Maps/L_TestPlatformEntry.L_TestPlatformEntry panel=expected
+UI is up (pid 28952); session state: preview_loading map: Town10HD
+press Ctrl+C in this window to leave it running, or close the game window to stop.

@@ -1,0 +1,3 @@
+LogTestPlatform: panel gate: entry maps [/Game/TestPlatform/Maps/L_TestPlatformEntry]
+LogTestPlatform: panel gate: run started on /Game/Carla/Maps/Town05_Opt: not an entry map, the panel stays off even if an entry map is loaded later
+LogTestPlatform: map /Game/Carla/Maps/Town05_Opt: config panel disabled (this run started on /Game/Carla/Maps/Town05_Opt, which is not an entry map)

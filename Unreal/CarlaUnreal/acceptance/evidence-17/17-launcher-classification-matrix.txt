@@ -1,0 +1,32 @@
+=== whitelist (DefaultGame.ini form, plain): /Game/TestPlatform/Maps/L_TestPlatformEntry ===
+value                                                          got      expect   verdict
+'/Game/TestPlatform/Maps/L_TestPlatformEntry.L_TestPlatformEntry' True     True     ok   dotted entry form (the one DefaultEngine.ini writes)
+'/Game/TestPlatform/Maps/L_TestPlatformEntry'                  True     True     ok   plain entry package path
+'L_TestPlatformEntry'                                          False    True     MISMATCH   short entry map name
+'L_TestPlatformEntry.L_TestPlatformEntry'                      False    True     MISMATCH   short entry name, dotted
+'/Game/My.Folder/L_TestPlatformEntry'                          False    True     MISMATCH   dot inside a folder, plain entry leaf
+'/Game/Carla/Maps/Town05_Opt'                                  False    False    ok   genuine non-entry map (plain)
+'/Game/Carla/Maps/Town05_Opt.Town05_Opt'                       False    False    ok   genuine non-entry map (dotted)
+'Town05_Opt'                                                   False    False    ok   genuine non-entry short name
+'/Game/My.Folder/Town01'                                       False    False    ok   dot in folder, non-entry leaf
+'/Game/TestPlatform/Maps/L_TestPlatformEntryExtra'             False    False    ok   prefix must not match
+'/Game/TestPlatform/Maps/l_testplatformentry.L_TESTPLATFORMENTRY' True     True     ok   case-insensitive both sides
+''                                                             False    False    ok   empty -Map means the project default, handled before this call
+'   '                                                          False    False    ok   whitespace only
+
+=== whitelist entry written in the dotted form: /Game/TestPlatform/Maps/L_TestPlatformEntry.L_TestPlatformEntry ===
+'/Game/TestPlatform/Maps/L_TestPlatformEntry.L_TestPlatformEntry' True     True     ok   dotted entry form (the one DefaultEngine.ini writes)
+'/Game/TestPlatform/Maps/L_TestPlatformEntry'                  True     True     ok   plain entry package path
+'L_TestPlatformEntry'                                          False    True     MISMATCH   short entry map name
+'L_TestPlatformEntry.L_TestPlatformEntry'                      False    True     MISMATCH   short entry name, dotted
+'/Game/My.Folder/L_TestPlatformEntry'                          False    True     MISMATCH   dot inside a folder, plain entry leaf
+'/Game/Carla/Maps/Town05_Opt'                                  False    False    ok   genuine non-entry map (plain)
+'/Game/Carla/Maps/Town05_Opt.Town05_Opt'                       False    False    ok   genuine non-entry map (dotted)
+'Town05_Opt'                                                   False    False    ok   genuine non-entry short name
+'/Game/My.Folder/Town01'                                       False    False    ok   dot in folder, non-entry leaf
+'/Game/TestPlatform/Maps/L_TestPlatformEntryExtra'             False    False    ok   prefix must not match
+'/Game/TestPlatform/Maps/l_testplatformentry.L_TESTPLATFORMENTRY' True     True     ok   case-insensitive both sides
+''                                                             False    False    ok   empty -Map means the project default, handled before this call
+'   '                                                          False    False    ok   whitespace only
+
+MISMATCHES: 6

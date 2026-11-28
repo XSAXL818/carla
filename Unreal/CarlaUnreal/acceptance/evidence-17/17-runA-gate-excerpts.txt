@@ -1,0 +1,12 @@
+LogCsvProfiler: Display: Metadata set : commandline="" C:\GameProject\CarlaUE5\carla\Unreal\CarlaUnreal\CarlaUnreal.uproject -game -windowed -ResX=1280 -ResY=720 -nosound -nologtimes -TestPlatformBackend=http://127.0.0.1:8791 -ExecCmds="TestPlatform.BackendAutoStart 0,r.ScreenPercentage 50"""
+LogInit: Command Line: -windowed -ResX=1280 -ResY=720 -nosound -nologtimes -TestPlatformBackend=http://127.0.0.1:8791 -ExecCmds="TestPlatform.BackendAutoStart 0,r.ScreenPercentage 50" -game
+LogTestPlatform: panel gate: entry maps [/Game/TestPlatform/Maps/L_TestPlatformEntry]
+LogCarla: FCommandLine -windowed -ResX=1280 -ResY=720 -nosound -nologtimes -TestPlatformBackend=http://127.0.0.1:8791 -ExecCmds="TestPlatform.BackendAutoStart 0,r.ScreenPercentage 50" -game
+LogTestPlatform: panel gate: run started on /Game/TestPlatform/Maps/L_TestPlatformEntry: entry map, the panel is armed for this run
+LogTestPlatform: map /Game/TestPlatform/Maps/L_TestPlatformEntry: config panel enabled (entry map)
+LogTestPlatform: test platform UI added to the game viewport
+TestPlatform.BackendAutoStart = "0"
+LogTestPlatform: panel gate: left the entry flow: world changed /Game/TestPlatform/Maps/L_TestPlatformEntry -> /Game/Carla/Maps/Town05_Opt without a panel-requested preview; the panel stays off for the rest of this run
+LogTestPlatform: map /Game/Carla/Maps/Town05_Opt: config panel disabled (left the entry flow at /Game/Carla/Maps/Town05_Opt, now at /Game/Carla/Maps/Town05_Opt, which was not a panel-requested preview)
+LogTestPlatform: test platform UI removed from the game viewport
+LogTestPlatform: map /Game/TestPlatform/Maps/L_TestPlatformEntry: config panel disabled (left the entry flow at /Game/Carla/Maps/Town05_Opt, now at /Game/TestPlatform/Maps/L_TestPlatformEntry, which was not a panel-requested preview)
