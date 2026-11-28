@@ -151,20 +151,21 @@ class Session:
         try:
             self.map = self.world.get_map()
         except RuntimeError:
-            # The world can legitimately have no OpenDrive: the config-screen
-            # entry level is an empty shell, and carla's Map is built from the
-            # xodr ("failed to generate map"). preview() loads the town before
-            # anything needs the map, and _compute_preview_camera already
-            # handles None.
+            # A world can genuinely have no OpenDrive at all. The config-screen
+            # entry level is an empty host *with* an empty OpenDrive (zero roads,
+            # Content/TestPlatform/Maps/OpenDrive/L_TestPlatformEntry.xodr), so it
+            # maps fine; this is the fallback for any other mapless level. preview()
+            # loads the town before anything needs the map, and
+            # _compute_preview_camera already handles None.
             self.map = None
 
     def _current_world_name(self) -> str:
-        """Name of the map the simulator is showing, "" when it has no OpenDrive.
+        """Name of the map the simulator is showing, "" when it has none.
 
-        Asking for ``world.get_map().name`` on the empty entry level raises
-        ``RuntimeError("failed to generate map")``; that is the normal starting
-        point of the config screen, not an error. An empty name never matches
-        the requested town, so preview() goes on and loads it.
+        The entry level's empty OpenDrive yields an empty Map whose name never
+        matches the requested town, so preview() goes on and loads it. A world
+        that cannot build a Map at all raises ``RuntimeError`` here; that is
+        still "no map", not an error.
         """
         try:
             return self.world.get_map().name
@@ -552,8 +553,8 @@ class Session:
             self._connect()
             carla = _carla()
             raw_name = self._current_world_name()
-            # e.g. "Carla/Maps/Town10HD_Opt" -> "town10hd"; "" (no OpenDrive in
-            # the empty entry level) never matches, so the town is loaded.
+            # e.g. "Carla/Maps/Town10HD_Opt" -> "town10hd"; the entry level's
+            # empty map name never matches, so the town is loaded.
             current = raw_name.split("/")[-1].lower().replace("_opt", "")
             if current != self.map_name.lower():
                 world_name = self._resolve_world_name()

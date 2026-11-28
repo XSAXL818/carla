@@ -65,6 +65,13 @@ public:
 	TFunction<void(float)> OnZoom;
 	TFunction<void()> OnResetView;
 	/**
+	 * Called just before the panel asks the backend to load this map
+	 * (POST /sessions/.../preview_map, i.e. client.load_world). The module uses
+	 * it to tell the backend's own preview load from a stray load_world when the
+	 * map gate decides whether an entry run keeps its panel.
+	 */
+	TFunction<void(const FString& /*MapId*/)> OnPreviewRequest;
+	/**
 	 * Starts the Python backend on the user's explicit request (the 「启动后端」
 	 * button). Bound by the module to the same launch path the automatic start
 	 * uses. Returns false and fills OutError when the launch cannot even be

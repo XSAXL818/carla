@@ -56,6 +56,10 @@ private:
 	bool IsEntryMap(const FString& MapId) const;
 	/** Map package name of a world, with any PIE prefix removed. */
 	static FString WorldMapId(const UWorld* World);
+	/** True when MapId is the town the panel itself asked the backend to load. */
+	bool IsBackendPreviewMap(const FString& MapId) const;
+	/** Forgets the per-run gate state when the game/PIE session is gone. */
+	void ResetGateForNewSession();
 
 	void TryStartBackend();
 
@@ -108,12 +112,25 @@ private:
 	/** -TestPlatformForceUI on the command line: the panel ignores the gate. */
 	bool bForceUI = false;
 	/**
-	 * This run started in an entry map. Latched because the backend's preview
-	 * load (client.load_world) replaces the entry level with the selected town
-	 * while the config screen must stay up; a per-current-map test would hide
-	 * the panel exactly when the city appears.
+	 * The map of this game/PIE session's first world. Set once and never
+	 * rewritten: it is the only map that can arm the panel, so a stray
+	 * load_world into an entry map later in the run cannot arm it.
 	 */
+	FString RunStartMapId;
+	/** Map package of the runtime world seen on the previous tick (world-change detection). */
+	FString LastRuntimeMapId;
+	/** This run started on an entry map and has not left the entry flow. */
 	bool bEntryMapArmed = false;
+	/** The start map was seen, so the gate has decided for this run. */
+	bool bGateDecided = false;
+	/** The run's arm was dropped by a world change that was not a backend preview. */
+	bool bEntryFlowLeft = false;
+	/**
+	 * Map the panel asked the backend to load (STestPlatformUI::OnPreviewRequest).
+	 * That world change is the one exception an entry run keeps its panel through;
+	 * it is cleared once the matching world change has been observed.
+	 */
+	FString ExpectedPreviewMap;
 	/** TestPlatform.Panel 1: an explicit request outranks the gate until Panel 0. */
 	bool bPanelManuallyShown = false;
 	double LastBackendAttempt = -100.0;

@@ -287,17 +287,21 @@ UE 侧 C++ 负责：把 Slate 面板挂到 game viewport、按后端状态驱动
 配置界面不再是"打开任意地图就有"的覆盖层，而是**入口地图的前端**。
 
 - **平台资产的家**：`Content/TestPlatform/`。入口地图是 `Content/TestPlatform/Maps/L_TestPlatformEntry.umap`，一个**空壳**：只有 1 个 `PlayerStart`，没有城市几何。配置界面中央的 3D 城市不是这张图的一部分 —— 后端 `POST /sessions/preview_map` 用 `client.load_world` 把选中的城镇加载进**同一个进程**，面板是盖在那张城镇上的。
+- **入口图的 OpenDrive**：空壳不等于无图。`Content/TestPlatform/Maps/OpenDrive/L_TestPlatformEntry.xodr` 是一份只有 header、零条 road 的合法 OpenDRIVE（与 `EmptyMap.xodr` 同构），CARLA 的 `ACarlaGameModeBase::ParseOpenDrive` 因此建出一张空 Map：启动日志不再出现 `LogCarla: Error: No OpenDrive file found for map 'L_TestPlatformEntry'` 与 `LogCarla: Error: Invalid Map`，后端 `world.get_map()` 也不再吐出 `ERROR: unable to parse the OpenDRIVE XML string`。真正的坏图照旧报错：把这份 xodr 临时移走（缺失）或换成非法 XML（解析失败）仍会得到同样的两条 `LogCarla: Error`。`session_runner.py` 里对 `get_map()` 的 `RuntimeError` 兜底保留，用于 CARLA 世界里任何其它无 xodr 的关卡。
 - **默认地图**：`Config/DefaultEngine.ini` 的 `GameDefaultMap` 与 `EditorStartupMap` 都是 `/Game/TestPlatform/Maps/L_TestPlatformEntry.L_TestPlatformEntry`，所以每次启动都落在配置界面。`ServerDefaultMap` 仍是 Town10HD：它只管 `-server`，与配置界面无关。`GlobalDefaultGameMode`（`CarlaGameMode`）不变 —— 空壳地图同样要由它起 CARLA 的 world/RPC 服务，已用真实 `-game` 运行验证（2000 端口监听、`carla.Client` 能连、`preview_map` 能 load_world）。
 - **白名单**：`UTestPlatformSettings::EntryMaps`，落在 `Config/DefaultGame.ini` 的 `[/Script/TestPlatform.TestPlatformSettings]`（编辑器里是 Project Settings > Game > Test Platform）。条目可以写完整包路径（`/Game/TestPlatform/Maps/L_TestPlatformEntry`）或短地图名（`L_TestPlatformEntry`），PIE 前缀忽略；列表为空时回退到同一个入口地图。别的图（Town05 等）不再显示面板，浏览地图是干净的。白名单在模块启动时读一次，改动要重启进程。
-- **闸门按"本次运行从哪张图启动"闩锁，不是"当前地图"**：`client.load_world` 会把入口地图换成预览城镇，而配置界面必须继续存在；只看当前地图会在城市出现的那一刻把面板藏掉。所以进程第一次看到白名单里的地图就记下"这是一次配置界面运行"，之后一直允许；从别的图启动的进程永远不允许。日志每次地图变化打一行 `map <包路径>: config panel enabled|disabled (<原因>)`，据此核对。
-- **两种显式覆盖**：命令行 `-TestPlatformForceUI` 无视白名单强制显示（自动化用，等价于"永远允许"）；控制台 `TestPlatform.Panel 1` 是手动覆盖（`Panel 0` 把控制权交回闸门）。自动路径永远不会在非入口地图里显示面板。
-- 默认启动仍然没有地图参数：`run-editor-lowquality.ps1` 不带 `-Map` 时用项目默认图（入口地图），带 `-Map /Game/Carla/Maps/Town05_Opt` 时打开指定图且不出面板。
+- **闸门判定的是"本次运行从哪张图启动"，不是"当前地图"**：每个 game/PIE 会话只在第一个运行时世界判定一次 —— 那张图在白名单里就把面板闩上（`bEntryMapArmed`），不在就永远不开。闩上之后只有一种世界切换保留面板：**面板自己请求的后端预览加载**（面板选图 → `PreviewMap` → 后端 `client.load_world`）。模块在 `STestPlatformUI::OnPreviewRequest` 里记下目标图，只有落到那张图（忽略 `_Opt` 后缀与大小写）的切换才算预览，所以入口图 → 城镇时面板不会被藏掉。其余任何世界切换（别的客户端 `load_world`、手动切图）都算"离开入口流程"：闩锁当场解除、面板移除，本次运行不再重新闩上 —— 从 Town05 启动的进程后来 `load_world` 到入口图也不会弹面板。日志据此核对：判定一次时的 `panel gate: run started on <包路径>: <armed|stays off>`、解除时的 `panel gate: left the entry flow: world changed <旧图> -> <新图> without a panel-requested preview`，以及每次地图变化一行 `map <包路径>: config panel enabled|disabled (<原因>)`，原因写的是真实依据（`entry map` / `backend preview load in a run that started on an entry map` / `this run started on <包路径>, which is not an entry map` 等）。
+- **会话结束即重置**：`TickRuntime` 发现 game viewport 不存在（编辑器空闲、PIE 结束）时调用 `ResetGateForNewSession()`，清掉启动图、闩锁、手动覆盖和预览目标，并把面板与 viewport 的绑定复位。因此一次从入口图启动的 PIE 不会把面板闩给同一编辑器进程里的下一次 PIE；下一次 PIE 按它自己的启动图重新判定。（该路径由代码与一次 `-game` 进程内不复用会话的实测支撑；PIE 本身按约束没有运行。）
+- **两种显式覆盖**：命令行 `-TestPlatformForceUI` 无视白名单强制显示（自动化用，等价于"永远允许"）；控制台 `TestPlatform.Panel 1` 是手动覆盖（`Panel 0` 把控制权交回闸门）。两者都不写闩锁：`Panel 0` 之后仍按上面的规则判定，自动路径永远不会在非入口地图里显示面板。
+- 默认启动仍然没有地图参数：`run-editor-lowquality.ps1` 不带 `-Map` 时用项目默认图（入口地图），带 `-Map /Game/Carla/Maps/Town05_Opt` 时打开指定图且不出面板。脚本按 `Config/DefaultGame.ini` 里的同一份 `EntryMaps` 白名单判断该等哪个就绪标志：入口图（或脚本的 `-ForceUI`）等 `test platform UI added`；非入口图等引擎自己的 `LogWorld: Bringing World ... up for play`，不会再为一个按设计不会出现的面板标志空等到超时。
 
 ## 10. 目录结构
 
 ```
 Content/TestPlatform/          测试平台自己的 UE 资产（不放 CARLA 的内容）
   Maps/L_TestPlatformEntry.umap  入口地图：空壳 + 1 个 PlayerStart，配置界面的宿主
+  Maps/OpenDrive/L_TestPlatformEntry.xodr
+                                 入口地图的零 road OpenDRIVE：让 CARLA 建出空 Map 而不是报错
 
 Source/TestPlatform/
   Public/           模块、API 客户端、Slate 面板、相机 rig 的头文件

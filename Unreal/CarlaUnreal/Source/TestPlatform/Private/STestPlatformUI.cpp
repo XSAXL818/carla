@@ -1370,6 +1370,12 @@ void STestPlatformUI::LoadSelectedMap(TFunction<void(bool)> Done)
 	}
 	SetStatus(FString::Printf(TEXT("正在加载地图 %s …"), *Config.MapId));
 
+	// The module's map gate records which load was requested by this panel:
+	// that is the only world change an entry run keeps its panel through.
+	if (OnPreviewRequest)
+	{
+		OnPreviewRequest(Config.MapId);
+	}
 	Api->PreviewMap(Config, [this, Done](bool bOk, const FSessionStatus& Status, const FString& Error)
 	{
 		bLoadingMap = false;

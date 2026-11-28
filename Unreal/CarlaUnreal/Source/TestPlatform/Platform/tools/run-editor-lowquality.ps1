@@ -8,11 +8,18 @@
 # With no -Map the run uses the project's GameDefaultMap, which is the
 # test-platform entry level (Content/TestPlatform/Maps/L_TestPlatformEntry), so
 # the config panel appears. Any other map runs without it: the panel is gated to
-# the entry maps listed in DefaultGame.ini.
+# the entry maps listed in DefaultGame.ini (that file is read here too).
+#
+# Readiness: on a run that may show the panel (no -Map, a whitelisted -Map, or
+# -ForceUI) the script waits for "test platform UI added". On any other -Map it
+# waits for the engine's own "LogWorld: Bringing World ... up for play" line
+# instead - by design the panel never appears there, so waiting for its marker
+# could only time out.
 #
 #   pwsh -File run-editor-lowquality.ps1              # 1280x720, 70%, entry level
 #   pwsh -File run-editor-lowquality.ps1 -ResX 1600 -ResY 900 -Screen 50
 #   pwsh -File run-editor-lowquality.ps1 -Map /Game/Carla/Maps/Town05_Opt   # browse a town, no panel
+#   pwsh -File run-editor-lowquality.ps1 -Map /Game/Carla/Maps/Town05_Opt -ForceUI   # panel forced on
 #   pwsh -File run-editor-lowquality.ps1 -Backend 127.0.0.1:8791   # non-default backend endpoint
 param(
     [int]$ResX = 1280,
@@ -24,7 +31,10 @@ param(
     # empty = the project default (the entry level); a package path or map name
     # here overrides it, and the config panel stays away unless the map is
     # whitelisted.
-    [string]$Map = ''
+    [string]$Map = '',
+    # force the panel on any -Map; same switch the module reads as
+    # -TestPlatformForceUI, so the readiness wait below still applies.
+    [switch]$ForceUI
 )
 
 # Normalisation follows FTestPlatformApi::RootUrl(): trim, add http:// when the
@@ -64,6 +74,44 @@ $python = 'C:\SoftWare\MiniConda\envs\chat_carla\python.exe'
 
 foreach ($path in @($engine, $project, $backendDir, $python)) {
     if (-not (Test-Path $path)) { throw "missing: $path" }
+}
+
+# The panel whitelist the module reads (UTestPlatformSettings::EntryMaps), so the
+# readiness wait below can know whether the panel is supposed to appear. Only
+# Config/DefaultGame.ini is read; an -ini:Game override on the command line is
+# not visible from here.
+$entryMaps = @()
+$defaultGameIni = Join-Path (Split-Path $project) 'Config\DefaultGame.ini'
+if (Test-Path $defaultGameIni) {
+    $entryMaps = @(Select-String -Path $defaultGameIni -Pattern '^\s*\+EntryMaps\s*=\s*(\S.*?)\s*$' |
+        ForEach-Object { $_.Matches[0].Groups[1].Value })
+}
+if ($entryMaps.Count -eq 0) { $entryMaps = @('/Game/TestPlatform/Maps/L_TestPlatformEntry') }
+
+function Test-EntryMap([string]$Name) {
+    if ([string]::IsNullOrWhiteSpace($Name)) { return $false }
+    $short = $Name.Substring($Name.LastIndexOf('/') + 1)
+    foreach ($entry in $entryMaps) {
+        if ([string]::Equals($entry, $Name, [System.StringComparison]::OrdinalIgnoreCase) -or
+            [string]::Equals($entry, $short, [System.StringComparison]::OrdinalIgnoreCase)) {
+            return $true
+        }
+        if ($Name.Length -gt $entry.Length -and
+            $Name.EndsWith($entry, [System.StringComparison]::OrdinalIgnoreCase) -and
+            $Name[$Name.Length - $entry.Length - 1] -eq '/') {
+            return $true
+        }
+    }
+    return $false
+}
+
+# No -Map means the project default map, which is the entry level.
+$panelExpected = $ForceUI -or $Map -eq '' -or (Test-EntryMap $Map)
+$readyPattern = if ($panelExpected) {
+    'test platform UI added'
+} else {
+    # the panel is gated off here, so the engine's own map-load line is the signal
+    'LogWorld: Bringing World .* up for play'
 }
 
 # one server at a time: these hold CARLA's :2000 and the backend endpoint, and lock the pak files
@@ -124,11 +172,11 @@ if ($HighQuality) { $cvars = @("r.ScreenPercentage $Screen") }
 $arguments = @(
     $project, '-game', '-windowed', "-ResX=$ResX", "-ResY=$ResY", '-nosound', '-nologtimes',
     "-TestPlatformBackend=$backendUrl"
-) + @($Map | Where-Object { $_ -ne '' }) + @(
-    "-ExecCmds=$($cvars -join ',')"
-)
+) + @($Map | Where-Object { $_ -ne '' })
+if ($ForceUI) { $arguments += '-TestPlatformForceUI' }
+$arguments += @("-ExecCmds=$($cvars -join ',')")
 
-Write-Host "launching CARLA (editor/game path) ${ResX}x${ResY} screen=$Screen map=$(if ($Map -eq '') { 'project default (entry level)' } else { $Map })" -ForegroundColor Cyan
+Write-Host "launching CARLA (editor/game path) ${ResX}x${ResY} screen=$Screen map=$(if ($Map -eq '') { 'project default (entry level)' } else { $Map }) panel=$(if ($panelExpected) { 'expected' } else { 'off (not an entry map)' })" -ForegroundColor Cyan
 $editor = Start-Process -FilePath $engine -ArgumentList $arguments -PassThru
 
 $logs = Join-Path (Split-Path $project) 'Saved\Logs'
@@ -138,7 +186,7 @@ while ((Get-Date) -lt $deadline) {
     Start-Sleep -Seconds 5
     $log = Get-ChildItem $logs -Filter 'CarlaUnreal*.log' -ErrorAction SilentlyContinue |
         Sort-Object LastWriteTime -Descending | Select-Object -First 1
-    if ($log -and (Select-String -Path $log.FullName -Pattern 'test platform UI added' -Quiet)) {
+    if ($log -and (Select-String -Path $log.FullName -Pattern $readyPattern -Quiet)) {
         $ready = $true
         break
     }
@@ -146,15 +194,21 @@ while ((Get-Date) -lt $deadline) {
 }
 
 if ($ready) {
-    $session = $null
-    try {
-        $session = (Invoke-WebRequest "$backendUrl/sessions/current" -TimeoutSec 10).Content |
-            ConvertFrom-Json
-    } catch { }
-    Write-Host "UI is up (pid $($editor.Id)); session state: $($session.state) map: $($session.map)" -ForegroundColor Green
+    if ($panelExpected) {
+        $session = $null
+        try {
+            $session = (Invoke-WebRequest "$backendUrl/sessions/current" -TimeoutSec 10).Content |
+                ConvertFrom-Json
+        } catch { }
+        Write-Host "UI is up (pid $($editor.Id)); session state: $($session.state) map: $($session.map)" -ForegroundColor Green
+    } else {
+        Write-Host "map is up (pid $($editor.Id)); the config panel is off on this map (not an entry map)" -ForegroundColor Green
+    }
     Write-Host "press Ctrl+C in this window to leave it running, or close the game window to stop." -ForegroundColor DarkGray
-} else {
+} elseif ($panelExpected) {
     Write-Host "the UI marker never appeared - check $logs" -ForegroundColor Red
+} else {
+    Write-Host "the map never finished loading - check $logs" -ForegroundColor Red
 }
 
 

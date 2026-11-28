@@ -267,6 +267,9 @@ void FTestPlatformModule::EnsureUI(UGameViewportClient* ViewportClient)
 		UI->OnPan = [this](FVector2D Delta) { CameraRig.AddUserPan(Delta); };
 		UI->OnZoom = [this](float Delta) { CameraRig.AddUserZoom(Delta); };
 		UI->OnResetView = [this]() { CameraRig.ResetUserView(); };
+		// The panel's own map requests are what may keep an entry run's panel
+		// through a world change; see the map gate in TickRuntime.
+		UI->OnPreviewRequest = [this](const FString& MapId) { ExpectedPreviewMap = MapId; };
 		// The 「启动后端」 button and TestPlatform.StartBackend share this one path.
 		UI->OnStartBackend = [this](FString& OutError) { return StartBackendNow(OutError); };
 	}
@@ -344,6 +347,57 @@ bool FTestPlatformModule::IsEntryMap(const FString& MapId) const
 		}
 	}
 	return false;
+}
+
+bool FTestPlatformModule::IsBackendPreviewMap(const FString& MapId) const
+{
+	if (ExpectedPreviewMap.IsEmpty())
+	{
+		return false;
+	}
+	// The panel selects a catalog id (Town10HD); the package that lands is
+	// /Game/Carla/Maps/Town10HD_Opt. Compare short names, ignoring the "_Opt"
+	// readability suffix and case.
+	auto Normalize = [](FString Name)
+	{
+		int32 Slash = INDEX_NONE;
+		if (Name.FindLastChar(TEXT('/'), Slash))
+		{
+			Name.RightChopInline(Slash + 1);
+		}
+		Name.ToLowerInline();
+		Name.RemoveFromEnd(TEXT("_opt"));
+		return Name;
+	};
+	return Normalize(MapId) == Normalize(ExpectedPreviewMap);
+}
+
+void FTestPlatformModule::ResetGateForNewSession()
+{
+	if (!bGateDecided && LastRuntimeMapId.IsEmpty() && !bPanelAdded)
+	{
+		return; // nothing has run yet (or the reset already happened)
+	}
+	UE_LOG(LogTestPlatform, Log,
+		TEXT("panel gate: no game viewport (editor idle or the session ended); gate reset for the next run"));
+	GLog->Flush();
+	bGateDecided = false;
+	bEntryMapArmed = false;
+	bEntryFlowLeft = false;
+	bPanelManuallyShown = false;
+	RunStartMapId.Reset();
+	LastRuntimeMapId.Reset();
+	LastGatedMapId.Reset();
+	ExpectedPreviewMap.Reset();
+	bPanelAllowed = true;
+	// The widget belonged to that viewport: forget the binding so the next
+	// session adds it again, and let the gate own its visibility from scratch.
+	bPanelAdded = false;
+	CachedViewportClient.Reset();
+	if (UI.IsValid())
+	{
+		UI->SetUIVisible(true);
+	}
 }
 
 void FTestPlatformModule::ShowPanel()
@@ -729,6 +783,14 @@ bool FTestPlatformModule::TickRuntime(float DeltaTime)
 	UGameViewportClient* ViewportClient = GEngine->GameViewport;
 	if (ViewportClient == nullptr)
 	{
+		// In the editor, no game viewport means no PIE session is running: the
+		// previous session is over, so its gate latch must not survive into the
+		// next PIE. (In -game the viewport lives for the whole process; there a
+		// load_world only swaps the world, which is handled below.)
+		if (GIsEditor)
+		{
+			ResetGateForNewSession();
+		}
 		return true;
 	}
 	UWorld* World = ViewportClient->GetWorld();
@@ -738,24 +800,90 @@ bool FTestPlatformModule::TickRuntime(float DeltaTime)
 	}
 
 	// The panel is the front end of an entry level, not an overlay on every map:
-	// browsing a town must stay clean. The verdict is latched for the run
-	// because the backend's preview load (client.load_world) replaces the entry
-	// level with the selected town while the config screen has to stay up --
-	// gating on the current map alone would hide the panel exactly when the
-	// city appears.
+	// browsing a town must stay clean. The **start** map of the game/PIE session
+	// decides once, and it is the only map that can arm the panel - a stray
+	// load_world into an entry level later in the run does not. The latch then
+	// survives the backend's own preview load (client.load_world replaces the
+	// entry level with the selected town while the config screen has to stay up),
+	// which the panel recognises because it was the one requesting that map. Any
+	// other world change means the user left the entry flow: the arm is dropped
+	// and the panel stays off for the rest of the run.
 	const FString MapId = WorldMapId(World);
+	// UGameEngine creates /Temp/Untitled_N worlds for startup and for a travel;
+	// they are not content maps, so they get no vote on the gate and no panel
+	// work happens in them. Without this the old /Temp world would decide the
+	// gate seconds before the real startup map loads.
+	if (MapId.StartsWith(TEXT("/Temp/"), ESearchCase::CaseSensitive))
+	{
+		return true;
+	}
 	const bool bOnEntryMap = IsEntryMap(MapId);
-	bEntryMapArmed = bEntryMapArmed || bOnEntryMap;
+	const bool bWorldChanged = !MapId.Equals(LastRuntimeMapId);
+	if (!bGateDecided)
+	{
+		bGateDecided = true;
+		bEntryMapArmed = bOnEntryMap;
+		RunStartMapId = MapId;
+		LastRuntimeMapId = MapId;
+		UE_LOG(LogTestPlatform, Log,
+			TEXT("panel gate: run started on %s: %s"),
+			*MapId,
+			bEntryMapArmed
+				? TEXT("entry map, the panel is armed for this run")
+				: TEXT("not an entry map, the panel stays off even if an entry map is loaded later"));
+		GLog->Flush();
+	}
+	else if (bWorldChanged)
+	{
+		const bool bPreviewMap = bEntryMapArmed && IsBackendPreviewMap(MapId);
+		if (bEntryMapArmed && !bPreviewMap && !bOnEntryMap)
+		{
+			bEntryMapArmed = false;
+			bEntryFlowLeft = true;
+			UE_LOG(LogTestPlatform, Log,
+				TEXT("panel gate: left the entry flow: world changed %s -> %s without a panel-requested preview; the panel stays off for the rest of this run"),
+				*LastRuntimeMapId, *MapId);
+			GLog->Flush();
+		}
+		if (bPreviewMap)
+		{
+			ExpectedPreviewMap.Reset(); // the requested world change has arrived
+		}
+		LastRuntimeMapId = MapId;
+	}
 	const bool bAllowed = bForceUI || bEntryMapArmed || bPanelManuallyShown;
 	if (bAllowed != bPanelAllowed || !MapId.Equals(LastGatedMapId))
 	{
+		FString Reason;
+		if (bForceUI)
+		{
+			Reason = TEXT("-TestPlatformForceUI");
+		}
+		else if (bEntryMapArmed && bOnEntryMap)
+		{
+			Reason = TEXT("entry map");
+		}
+		else if (bEntryMapArmed)
+		{
+			Reason = TEXT("backend preview load in a run that started on an entry map");
+		}
+		else if (bPanelManuallyShown)
+		{
+			Reason = TEXT("TestPlatform.Panel");
+		}
+		else if (bEntryFlowLeft)
+		{
+			Reason = FString::Printf(
+				TEXT("left the entry flow at %s, which was not a panel-requested preview"),
+				*LastRuntimeMapId);
+		}
+		else
+		{
+			Reason = FString::Printf(
+				TEXT("this run started on %s, which is not an entry map"), *RunStartMapId);
+		}
 		UE_LOG(LogTestPlatform, Log, TEXT("map %s: config panel %s (%s)"),
-			*MapId, bAllowed ? TEXT("enabled") : TEXT("disabled"),
-			bForceUI ? TEXT("-TestPlatformForceUI")
-				: bOnEntryMap ? TEXT("entry map")
-				: bEntryMapArmed ? TEXT("this run started on an entry map")
-				: bPanelManuallyShown ? TEXT("TestPlatform.Panel")
-				: TEXT("not an entry map"));
+			*MapId, bAllowed ? TEXT("enabled") : TEXT("disabled"), *Reason);
 		bPanelAllowed = bAllowed;
 		LastGatedMapId = MapId;
 		GLog->Flush();
