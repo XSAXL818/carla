@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>工作日志</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#161a21; --line:#252b35; --fg:#e6e9ef; --dim:#9aa4b2;
+    --accent:#66ebd3; --unread:#ffb454; --ok:#66ebd3;
+  }
+  @media (prefers-color-scheme: light){
+    :root{ --bg:#f6f7f9; --panel:#ffffff; --line:#e3e6ea; --fg:#1b1f24; --dim:#5d6673;
+           --accent:#0e8f7d; --unread:#b4690e; --ok:#0e8f7d; }
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{background:var(--bg);color:var(--fg);font:13px/1.6 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif}
+  header{position:sticky;top:0;z-index:2;background:var(--bg);border-bottom:1px solid var(--line);
+         padding:10px 12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  h1{font-size:13px;margin:0;font-weight:600;letter-spacing:.02em}
+  .badge{background:var(--unread);color:#111;border-radius:999px;padding:1px 8px;font-size:11px;font-weight:700}
+  .badge.zero{background:var(--ok);color:#111}
+  .spacer{flex:1}
+  button{background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:6px;
+         padding:4px 10px;font-size:12px;cursor:pointer}
+  button:hover{border-color:var(--accent)}
+  main{padding:8px 12px 40px;max-width:900px;margin:0 auto}
+  .item{border:1px solid var(--line);border-radius:8px;background:var(--panel);margin:8px 0;padding:10px 12px;
+        display:grid;grid-template-columns:22px 1fr;gap:10px;align-items:start}
+  .item.unread{border-color:var(--unread);box-shadow:0 0 0 1px var(--unread) inset}
+  .item.unread .t::after{content:"未读";margin-left:8px;font-size:10px;font-weight:700;color:#111;
+        background:var(--unread);border-radius:4px;padding:0 5px;vertical-align:1px}
+  input[type=checkbox]{margin-top:3px;width:16px;height:16px;accent-color:var(--accent);cursor:pointer}
+  .t{font-weight:600}
+  .t .time{color:var(--dim);font-weight:400;margin-right:8px;font-variant-numeric:tabular-nums}
+  .b{margin-top:4px;color:var(--dim);white-space:pre-wrap}
+  .b b{color:var(--fg);font-weight:600}
+  footer{color:var(--dim);font-size:11px;text-align:center;padding:14px 0 30px}
+  .err{color:var(--unread)}
+</style>
+</head>
+<body>
+<header>
+  <h1>工作日志</h1>
+  <span id="badge" class="badge zero">0 未读</span>
+  <span class="spacer"></span>
+  <button id="toggle">只看未读</button>
+  <button id="allread">全部标为已读</button>
+</header>
+<main id="list"><p class="b">加载中…</p></main>
+<footer id="foot"></footer>
+
+<script>
+const SRC = "WORKLOG.md";
+const KEY = "worklog.read.v1";
+const read = new Set(JSON.parse(localStorage.getItem(KEY) || "[]"));
+let onlyUnread = false;
+let lastFingerprint = "";
+
+function save(){ localStorage.setItem(KEY, JSON.stringify([...read])); }
+
+function parse(md){
+  const lines = md.split(/\r?\n/);
+  const items = [];
+  let cur = null;
+  for (const line of lines){
+    const m = line.match(/^###\s+(.+)$/);
+    if (m){
+      if (cur) items.push(cur);
+      const head = m[1].trim();
+      const t = head.match(/^(\d{1,2}:\d{2})\s*[·・]\s*(.*)$/);
+      cur = { id: head, time: t ? t[1] : "", title: t ? t[2] : head, body: [] };
+      continue;
+    }
+    if (!cur) continue;
+    if (/^---\s*$/.test(line)) continue;
+    if (/^>\s?/.test(line)) continue;      // skip the header blockquote
+    if (/^#\s/.test(line)) continue;
+    cur.body.push(line);
+  }
+  if (cur) items.push(cur);
+  return items.filter(i => i.body.some(l => l.trim()));
+}
+
+function render(items){
+  const badge = document.getElementById("badge");
+  const unreadCount = items.filter(i => !read.has(i.id)).length;
+  badge.textContent = unreadCount ? unreadCount + " 未读" : "全部已读";
+  badge.className = "badge" + (unreadCount ? "" : " zero");
+
+  const list = document.getElementById("list");
+  list.innerHTML = "";
+  const shown = onlyUnread ? items.filter(i => !read.has(i.id)) : items;
+  if (!shown.length){ list.innerHTML = '<p class="b">没有未读条目 🎉</p>'; return; }
+  for (const it of shown){
+    const el = document.createElement("div");
+    el.className = "item" + (read.has(it.id) ? "" : " unread");
+
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.checked = read.has(it.id);
+    cb.title = "标记已读 / 未读";
+    cb.addEventListener("change", () => {
+      if (cb.checked) read.add(it.id); else read.delete(it.id);
+      save(); render(itemsState);
+    });
+
+    const text = document.createElement("div");
+    const t = document.createElement("div");
+    t.className = "t";
+    t.innerHTML = (it.time ? '<span class="time">' + it.time + "</span>" : "") + escapeHtml(it.title);
+    const b = document.createElement("div");
+    b.className = "b";
+    b.innerHTML = it.body.map(l => boldLabels(escapeHtml(l))).join("\n");
+    text.append(t, b);
+    el.append(cb, text);
+    list.appendChild(el);
+  }
+}
+const itemsState = [];
+
+function boldLabels(s){
+  return s.replace(/(\*\*)?(问题|处理|结果|做了什么|取舍|教训|过程问题)(\*\*)?：/g, "<b>$2：</b>");
+}
+function escapeHtml(s){
+  return s.replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+async function tick(){
+  try{
+    const res = await fetch(SRC + "?t=" + Date.now(), {cache:"no-store"});
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const md = await res.text();
+    const fp = md.length + ":" + md.slice(0, 200);
+    const items = parse(md);
+    itemsState.length = 0; itemsState.push(...items);
+    if (fp !== lastFingerprint){ lastFingerprint = fp; }
+    render(itemsState);
+    document.getElementById("foot").textContent =
+      items.length + " 条 · 每 3 秒自动刷新 · " + new Date().toLocaleTimeString();
+  }catch(e){
+    document.getElementById("list").innerHTML =
+      '<p class="b err">读取 ' + SRC + ' 失败：' + escapeHtml(String(e)) + "</p>";
+    document.getElementById("foot").textContent =
+      "提示：页面必须从 WORKLOG.md 所在目录以 http 打开（file:// 会被浏览器拦截）";
+  }
+}
+
+document.getElementById("toggle").addEventListener("click", (e) => {
+  onlyUnread = !onlyUnread;
+  e.target.textContent = onlyUnread ? "显示全部" : "只看未读";
+  render(itemsState);
+});
+document.getElementById("allread").addEventListener("click", () => {
+  itemsState.forEach(i => read.add(i.id));
+  save(); render(itemsState);
+});
+
+tick();
+setInterval(tick, 3000);
+</script>
+</body>
+</html>
