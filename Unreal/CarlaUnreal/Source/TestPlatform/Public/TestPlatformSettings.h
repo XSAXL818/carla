@@ -30,8 +30,10 @@ public:
 	/**
 	 * Maps that host the config panel. An entry matches either the full package
 	 * path (/Game/TestPlatform/Maps/L_TestPlatformEntry) or the short map name
-	 * (L_TestPlatformEntry); the PIE prefix is ignored. Every other map runs
-	 * with no panel. -TestPlatformForceUI overrides the gate at launch.
+	 * (L_TestPlatformEntry). A PIE session's UEDPIE_<n>_ instance id is stripped
+	 * from the package's last path segment before comparing, so PIE from the
+	 * editor's startup map matches its entry here. Every other map runs with no
+	 * panel. -TestPlatformForceUI overrides the gate at launch.
 	 */
 	UPROPERTY(config, EditAnywhere, Category = "Panel", meta = (DisplayName = "Entry maps"))
 	TArray<FString> EntryMaps;

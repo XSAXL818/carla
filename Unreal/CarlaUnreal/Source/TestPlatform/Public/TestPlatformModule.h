@@ -54,7 +54,11 @@ private:
 	 * it on everywhere, and an explicit TestPlatform.Panel is a manual override.
 	 */
 	bool IsEntryMap(const FString& MapId) const;
-	/** Map package name of a world, with any PIE prefix removed. */
+	/**
+	 * Map package name of a world, with the PIE instance id stripped from the
+	 * last path segment (see StripPiePrefix). Full package path, not a short
+	 * name: the gate compares it against the whitelist and logs it.
+	 */
 	static FString WorldMapId(const UWorld* World);
 	/** True when MapId is the town the panel itself asked the backend to load. */
 	bool IsBackendPreviewMap(const FString& MapId) const;

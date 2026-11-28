@@ -106,19 +106,50 @@ namespace
 		return Host == TEXT("127.0.0.1") || Host == TEXT("::1") || Host.StartsWith(TEXT("127."));
 	}
 
-	/** World instance ids of a PIE world: UEDPIE_0_<map>, UEDPIE_12_<map>, ... */
+	/** Last path segment of a map package: /Game/Maps/L_Entry -> L_Entry. */
+	FString LastMapSegment(const FString& MapName)
+	{
+		int32 Slash = INDEX_NONE;
+		if (MapName.FindLastChar(TEXT('/'), Slash))
+		{
+			return MapName.RightChop(Slash + 1);
+		}
+		return MapName;
+	}
+
+	/**
+	 * Removes the PIE world-instance id from a map package name, whether it
+	 * arrives as a bare map name or as a full package path: UEDPIE_0_L_Entry ->
+	 * L_Entry, /Game/Maps/UEDPIE_12_L_Entry -> /Game/Maps/L_Entry. The id is a
+	 * segment prefix of the package's **last** segment only - that is the one
+	 * name PIE rewrites (UWorld::RemovePIEPrefix looks for it anywhere because
+	 * it also sees the .ObjectName suffix). A folder that happens to contain
+	 * UEDPIE_ is therefore left untouched, and a map genuinely called
+	 * L_Entry is returned unchanged. The id must be a non-empty run of digits
+	 * followed by '_', exactly what the engine writes; anything else is not an
+	 * instance id and the name is kept as it is.
+	 */
 	FString StripPiePrefix(const FString& MapName)
 	{
-		FString Name = MapName;
-		if (Name.StartsWith(TEXT("UEDPIE_"), ESearchCase::CaseSensitive))
+		const TCHAR* Marker = TEXT("UEDPIE_");
+		const int32 MarkerLen = 7;
+		const int32 SegmentStart = MapName.Len() - LastMapSegment(MapName).Len();
+		if (!MapName.Mid(SegmentStart, MarkerLen).Equals(Marker, ESearchCase::CaseSensitive))
 		{
-			const int32 PrefixEnd = Name.Find(
-				TEXT("_"), ESearchCase::CaseSensitive, ESearchDir::FromStart, 7);
-			if (PrefixEnd != INDEX_NONE)
-			{
-				Name.RightChopInline(PrefixEnd + 1);
-			}
+			return MapName;
 		}
+		int32 IdEnd = SegmentStart + MarkerLen;
+		while (IdEnd < MapName.Len() && FChar::IsDigit(MapName[IdEnd]))
+		{
+			++IdEnd;
+		}
+		if (IdEnd == SegmentStart + MarkerLen || IdEnd + 1 >= MapName.Len()
+			|| MapName[IdEnd] != TEXT('_'))
+		{
+			return MapName;
+		}
+		FString Name = MapName;
+		Name.RemoveAt(SegmentStart, IdEnd + 1 - SegmentStart);
 		return Name;
 	}
 
@@ -317,21 +348,20 @@ FString FTestPlatformModule::WorldMapId(const UWorld* World)
 	return StripPiePrefix(Package != nullptr ? Package->GetName() : FString());
 }
 
-bool FTestPlatformModule::IsEntryMap(const FString& MapId) const
+bool FTestPlatformModule::IsEntryMap(const FString& InMapId) const
 {
+	// WorldMapId already strips the PIE instance id; doing it again here keeps
+	// the whitelist honest for any other caller and for an entry written with a
+	// prefix in DefaultGame.ini.
+	const FString MapId = StripPiePrefix(InMapId);
 	if (MapId.IsEmpty())
 	{
 		return false;
 	}
-	FString ShortName = MapId;
-	int32 Slash = INDEX_NONE;
-	if (ShortName.FindLastChar(TEXT('/'), Slash))
-	{
-		ShortName.RightChopInline(Slash + 1);
-	}
+	const FString ShortName = LastMapSegment(MapId);
 	for (const FString& Entry : EntryMaps)
 	{
-		const FString Candidate = Entry.TrimStartAndEnd();
+		const FString Candidate = StripPiePrefix(Entry.TrimStartAndEnd());
 		if (Candidate.IsEmpty())
 		{
 			continue;
@@ -352,27 +382,24 @@ bool FTestPlatformModule::IsEntryMap(const FString& MapId) const
 	return false;
 }
 
-bool FTestPlatformModule::IsBackendPreviewMap(const FString& MapId) const
+bool FTestPlatformModule::IsBackendPreviewMap(const FString& InMapId) const
 {
 	if (ExpectedPreviewMap.IsEmpty())
 	{
 		return false;
 	}
 	// The panel selects a catalog id (Town10HD); the package that lands is
-	// /Game/Carla/Maps/Town10HD_Opt. Compare short names, ignoring the "_Opt"
-	// readability suffix and case.
-	auto Normalize = [](FString Name)
+	// /Game/Carla/Maps/Town10HD_Opt (under a UEDPIE_<n>_ prefix when the run is
+	// a PIE session). Compare short names, ignoring the PIE instance id, the
+	// "_Opt" readability suffix and case.
+	auto Normalize = [](const FString& Name)
 	{
-		int32 Slash = INDEX_NONE;
-		if (Name.FindLastChar(TEXT('/'), Slash))
-		{
-			Name.RightChopInline(Slash + 1);
-		}
-		Name.ToLowerInline();
-		Name.RemoveFromEnd(TEXT("_opt"));
-		return Name;
+		FString Short = LastMapSegment(StripPiePrefix(Name));
+		Short.ToLowerInline();
+		Short.RemoveFromEnd(TEXT("_opt"));
+		return Short;
 	};
-	return Normalize(MapId) == Normalize(ExpectedPreviewMap);
+	return Normalize(InMapId) == Normalize(ExpectedPreviewMap);
 }
 
 void FTestPlatformModule::ClearExpectedPreview(const TCHAR* Why)
