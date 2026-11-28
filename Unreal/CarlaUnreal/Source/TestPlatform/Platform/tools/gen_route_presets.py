@@ -36,7 +36,11 @@ import sys
 import xml.etree.ElementTree as ET
 from collections import defaultdict, deque
 
-LANE_ID = -1  # rightmost driving lane relative to road direction
+# Fallback only: a literal ``lane_id`` that does not exist on a road makes
+# ``map.get_waypoint_xodr(road, lane, s)`` return None, so every waypoint below
+# carries a lane id that the .xodr really has at that s. ``-1`` survives as the
+# "any driving lane" sentinel only for roads whose lane sections we cannot read.
+LANE_ID = -1
 S_MARGIN = 1.0  # keep waypoints off the exact road ends
 
 
@@ -44,10 +48,17 @@ S_MARGIN = 1.0  # keep waypoints off the exact road ends
 # OpenDRIVE parsing
 # --------------------------------------------------------------------------- #
 def parse_xodr(path: str):
-    """Iteratively parse roads and junctions; returns (roads, links, junctions)."""
+    """Iteratively parse roads, links, junctions and per-road lane sections.
+
+    Returns (roads, links, junctions, lane_sections). ``lane_sections`` maps a
+    road id onto ``[(s_start, {lane_id: lane_type})]`` sorted by ``s_start``; the
+    presets need it to emit a ``lane_id`` that exists at the waypoint's ``s``
+    (junction connecting roads often have no lane -1 at all, only lane 1).
+    """
     roads: dict[int, float] = {}
     links: dict[int, dict[str, tuple[str, str, str]]] = {}
     junctions: dict[int, list[tuple[int, str, int]]] = defaultdict(list)
+    lane_sections: dict[int, list[tuple[float, dict[int, str]]]] = {}
 
     for _event, el in ET.iterparse(path, events=("end",)):
         if el.tag == "road":
@@ -65,6 +76,29 @@ def parse_xodr(path: str):
                             sub.get("contactPoint") or "start",
                         )
             links[rid] = entry
+            sections = []
+            lanes_el = el.find("lanes")
+            if lanes_el is not None:
+                for sec in lanes_el.findall("laneSection"):
+                    try:
+                        s0 = float(sec.get("s") or 0.0)
+                    except (TypeError, ValueError):
+                        s0 = 0.0
+                    table: dict[int, str] = {}
+                    for side in ("left", "right"):
+                        side_el = sec.find(side)
+                        if side_el is None:
+                            continue
+                        for lane in side_el.findall("lane"):
+                            try:
+                                lid = int(lane.get("id"))
+                            except (TypeError, ValueError):
+                                continue
+                            if lid != 0:
+                                table[lid] = lane.get("type") or "driving"
+                    sections.append((s0, table))
+            sections.sort(key=lambda item: item[0])
+            lane_sections[rid] = sections
             el.clear()
         elif el.tag == "junction":
             for conn in el.findall("connection"):
@@ -77,7 +111,7 @@ def parse_xodr(path: str):
                 junctions[inc].append((con, cp, int(conn.get("id") or -1)))
             el.clear()
 
-    return roads, links, junctions
+    return roads, links, junctions, lane_sections
 
 
 # --------------------------------------------------------------------------- #
@@ -296,7 +330,39 @@ def preset_turns(adj, roads, target_m=1800.0, min_turns=5, min_m=900.0):
 # --------------------------------------------------------------------------- #
 # Serialisation
 # --------------------------------------------------------------------------- #
-def to_waypoints(roads, path):
+def lane_at(lane_sections, rid, s, direction):
+    """A driving lane id that exists on ``rid`` at ``s`` (None when unknown).
+
+    Right-hand traffic: travelling with +s uses the right side of the reference
+    line (negative OpenDRIVE ids), travelling with -s the left side (positive
+    ids); the lane closest to the centre line wins. This is what makes every
+    emitted waypoint resolvable with a plain ``get_waypoint_xodr(road, lane, s)``
+    -- the old fixed ``lane_id = -1`` silently failed on junction connecting
+    roads, which may carry only positive lane ids.
+    """
+    sections = lane_sections.get(rid) or []
+    if not sections:
+        return None
+    table = sections[0][1]
+    for s0, candidate in sections:
+        if s0 <= s:
+            table = candidate
+        else:
+            break
+    driving = [lid for lid, kind in table.items() if kind == "driving"]
+    if not driving:
+        driving = [lid for lid in table if lid != 0]
+    if not driving:
+        return None
+
+    def rank(lid):
+        right_side = lid < 0
+        return (0 if right_side == (direction > 0) else 1, abs(lid), lid)
+
+    return min(driving, key=rank)
+
+
+def to_waypoints(roads, path, lane_sections):
     """Entry *and* exit control point for every road, so the route is unambiguous.
 
     Entry-only would leave the traversal of each road implicit; with both ends
@@ -305,11 +371,12 @@ def to_waypoints(roads, path):
     """
     wps = []
 
-    def push(rid, s, length):
+    def push(rid, s, length, direction):
         s = round(max(0.0, min(length, s)), 2)
         if wps and wps[-1]["road_id"] == rid and abs(wps[-1]["s"] - s) < 1e-6:
             return
-        wps.append({"road_id": rid, "lane_id": LANE_ID, "s": s})
+        lane = lane_at(lane_sections, rid, s, direction)
+        wps.append({"road_id": rid, "lane_id": LANE_ID if lane is None else lane, "s": s})
 
     for rid, direction in path:
         length = roads.get(rid, 0.0)
@@ -317,8 +384,8 @@ def to_waypoints(roads, path):
             entry, exit_ = S_MARGIN, length - S_MARGIN
         else:
             entry, exit_ = length - S_MARGIN, S_MARGIN
-        push(rid, entry, length)
-        push(rid, exit_, length)
+        push(rid, entry, length, direction)
+        push(rid, exit_, length, direction)
     return wps
 
 
@@ -330,7 +397,7 @@ PRESET_META = {
 }
 
 
-def build_presets(roads, adj):
+def build_presets(roads, adj, lane_sections):
     """Each kind is tried at its preferred size, then at relaxed sizes."""
     attempts = {
         "loop": [
@@ -385,7 +452,7 @@ def build_presets(roads, adj):
                 "note": note,
                 "length_m": round(float(length), 1),
                 "roads": len(path),
-                "waypoints": to_waypoints(roads, path),
+                "waypoints": to_waypoints(roads, path, lane_sections),
             }
         )
     return out
@@ -427,7 +494,7 @@ def main(argv=None):
 
     for map_name, path in xodrs:
         try:
-            roads, links, junctions = parse_xodr(path)
+            roads, links, junctions, lane_sections = parse_xodr(path)
         except ET.ParseError as exc:
             print(f"{map_name:<12}  parse error: {exc}")
             continue
@@ -435,7 +502,7 @@ def main(argv=None):
             print(f"{map_name:<12}  no roads")
             continue
         adj = build_graph(roads, links, junctions)
-        presets = build_presets(roads, adj)
+        presets = build_presets(roads, adj, lane_sections)
         entry = {
             "map": map_name,
             "xodr": os.path.relpath(path, args.maps_root).replace("\\", "/"),

@@ -24,12 +24,12 @@
     },
     {
      "road_id": 735,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 1.0
     },
     {
      "road_id": 735,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 45.15
     },
     {
@@ -44,32 +44,32 @@
     },
     {
      "road_id": 735,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 45.15
     },
     {
      "road_id": 735,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 1.0
     },
     {
      "road_id": 5,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 105.75
     },
     {
      "road_id": 5,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 1.0
     },
     {
      "road_id": 469,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 1.0
     },
     {
      "road_id": 469,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 36.2
     },
     {
@@ -84,12 +84,12 @@
     },
     {
      "road_id": 469,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 36.2
     },
     {
      "road_id": 469,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 1.0
     },
     {
@@ -134,12 +134,12 @@
     },
     {
      "road_id": 7,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 21.46
     },
     {
      "road_id": 7,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 1.0
     },
     {
@@ -154,32 +154,32 @@
     },
     {
      "road_id": 6,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 84.44
     },
     {
      "road_id": 6,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 1.0
     },
     {
      "road_id": 735,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 45.15
     },
     {
      "road_id": 735,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 1.0
     },
     {
      "road_id": 5,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 105.75
     },
     {
      "road_id": 5,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 1.0
     },
     {
@@ -194,12 +194,12 @@
     },
     {
      "road_id": 4,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 27.37
     },
     {
      "road_id": 4,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 1.0
     },
     {
@@ -244,12 +244,12 @@
     },
     {
      "road_id": 565,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 1.0
     },
     {
      "road_id": 565,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 45.64
     },
     {
@@ -304,12 +304,12 @@
     },
     {
      "road_id": 769,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 1.0
     },
     {
      "road_id": 769,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 17.92
     },
     {
@@ -334,92 +334,92 @@
     },
     {
      "road_id": 258,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 1.0
     },
     {
      "road_id": 258,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 16.55
     },
     {
      "road_id": 14,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 8.17
     },
     {
      "road_id": 14,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 1.0
     },
     {
      "road_id": 942,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 16.16
     },
     {
      "road_id": 942,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 1.0
     },
     {
      "road_id": 12,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 53.16
     },
     {
      "road_id": 12,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 1.0
     },
     {
      "road_id": 150,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 29.91
     },
     {
      "road_id": 150,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 1.0
     },
     {
      "road_id": 11,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 26.93
     },
     {
      "road_id": 11,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 1.0
     },
     {
      "road_id": 718,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 1.0
     },
     {
      "road_id": 718,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 13.1
     },
     {
      "road_id": 1,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 118.93
     },
     {
      "road_id": 1,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 1.0
     },
     {
      "road_id": 8,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 18.54
     },
     {
      "road_id": 8,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 1.0
     },
     {
@@ -434,12 +434,12 @@
     },
     {
      "road_id": 516,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 1.0
     },
     {
      "road_id": 516,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 42.19
     }
    ]
@@ -454,42 +454,42 @@
    "waypoints": [
     {
      "road_id": 565,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 1.0
     },
     {
      "road_id": 565,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 45.64
     },
     {
      "road_id": 3,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 3.91
     },
     {
      "road_id": 3,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 1.0
     },
     {
      "road_id": 565,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 45.64
     },
     {
      "road_id": 565,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 1.0
     },
     {
      "road_id": 2,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 10.08
     },
     {
      "road_id": 2,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 1.0
     },
     {
@@ -504,22 +504,22 @@
     },
     {
      "road_id": 1,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 118.93
     },
     {
      "road_id": 1,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 1.0
     },
     {
      "road_id": 8,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 18.54
     },
     {
      "road_id": 8,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 1.0
     },
     {
@@ -574,22 +574,22 @@
     },
     {
      "road_id": 735,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 45.15
     },
     {
      "road_id": 735,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 1.0
     },
     {
      "road_id": 5,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 105.75
     },
     {
      "road_id": 5,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 1.0
     },
     {
@@ -604,12 +604,12 @@
     },
     {
      "road_id": 4,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 27.37
     },
     {
      "road_id": 4,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 1.0
     },
     {
@@ -674,22 +674,22 @@
     },
     {
      "road_id": 655,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 30.12
     },
     {
      "road_id": 655,
-     "lane_id": -1,
+     "lane_id": 1,
      "s": 1.0
     },
     {
      "road_id": 21,
-     "lane_id": -1,
+     "lane_id": 4,
      "s": 24.63
     },
     {
      "road_id": 21,
-     "lane_id": -1,
+     "lane_id": 4,
      "s": 1.0
     }
    ]

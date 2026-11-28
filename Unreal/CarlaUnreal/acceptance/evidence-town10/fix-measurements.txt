@@ -1,0 +1,81 @@
+Town10HD 三项缺陷修复 · 原始测量记录
+=====================================
+环境：CarlaUnreal 5.8（-game，1600x900，Screen 50）+ 后端 127.0.0.1:8765 + CARLA RPC 2000
+地图：Carla/Maps/Town10HD_Opt（Town10HD_Opt.xodr 与 Town10HD.xodr 同哈希）
+
+1. 路线预设（修复前，旧 Town10HD.json）
+-------------------------------------
+probe（直接 map.get_waypoint_xodr(road, lane_id, s)，lane_id=-1）：
+  loop      10/18 可解析（8 个 None：road 735 / 469 的 s=1 与 s=length-1）
+  arterial  28/32
+  cross     20/32
+  turns     40/48
+  合计      98/130
+失败点全部是 junction 连接路：road 735 只有 lane 1..5（无 -1），road 469 只有 lane 1。
+后端 _waypoint_at() 会逐条试车道，所以后端仍能 130/130 解析并让主车跑完 494.6 m，
+但预设本身（road_id, lane_id, s）不自洽：任何直接 get_waypoint_xodr 的消费者都会得到锯齿折线。
+（“road 735/469 不存在”是误读：两条路都在 xodr 里，只是没有 lane -1。）
+
+修复后（从 Town10HD_Opt 同源 xodr 重新生成，lane_id 取该 s 上真实存在的行驶车道）：
+  loop      18/18  raw，18/18  probe，折线 655.8 m，18 waypoints，9 roads，498.0 m
+  arterial  32/32  raw，32/32  probe，折线 715.2 m，32 waypoints，16 roads，629.5 m
+  cross     32/32  raw，32/32  probe，折线 587.8 m，32 waypoints，16 roads，529.5 m
+  turns     48/48  raw，48/48  probe，折线 1113.6 m，48 waypoints，24 roads，1054.7 m
+  合计      130/130
+lane_id 取值从统一 -1 变为实际存在的 -1/+1（个别路段 +4）；schema 不变，length_m/roads/waypoints 与 index.json 均未变。
+
+2. 折线不可见（修复前）
+---------------------
+carla.DebugHelper 在本分支只有 draw_line / draw_point / draw_box / draw_arrow / draw_string，
+没有 draw_polyline。直接调用：
+  >>> world.debug.draw_polyline(points, carla.Color(255,180,84), 0.3, 0.9)
+  AttributeError: 'DebugHelper' object has no attribute 'draw_polyline'
+session_runner 的 `except Exception: pass` 把它吞掉，所以路线从未画出来。
+同一位置用 draw_line 画 z=0.0 / z=0.8 的测试线均可见（排除 z 遮挡/颜色/世界引用）。
+
+3. 背景车（修复前）
+-----------------
+  /sessions/current traffic = 0；独立 carla.Client 看到 vehicle.* = 1（只有主车）
+  蓝图：filter('vehicle') = 25，filter('vehicle.*') = 25，四轮 = 18（不是蓝图问题）
+  出生点：155 个，距路线起点最远 245.0 m
+  旧筛选条件 `d.length() < 1500.0: continue`（以及前方 4000 m）在 500 m 见方的 Town10HD 上
+  把 155 个点全部跳过：满足 >=1500 m 的点数 = 0。于是循环 0 次、失败也不记录。
+修复后（preview 配置 light = 4 辆，seed 由面板给 20261126）：
+  traffic_detail: requested 4, spawn_points 155, blueprints 18, skipped_clearance 0,
+                  skipped_gap 9, attempted 4, spawned 4, failed 0, reasons []
+  独立 client 25 s 观测（5 个 vehicle.* = 主车 + 4 辆背景车）：
+    id=27 vehicle.tesla.model3      0.0/26.7 km/h（主车）
+    id=28 vehicle.nissan.patrol    29.6/29.8 km/h，25 s 位移 73.8 m
+    id=29 vehicle.ue4.ford.crown   28.9/30.0 km/h，25 s 位移 74.0 m
+    id=30 vehicle.mini.cooper      29.3/29.8 km/h，25 s 位移 73.7 m
+    id=31 vehicle.ue4.mercedes.ccc  0.0 km/h，停在 road 19 lane -1，brake=1.00、附近红绿灯 Red（等灯，属正常交通）
+  TM：start 时 4 辆 set_autopilot(True)，client.get_trafficmanager(8000).set_synchronous_mode(True)
+      + set_random_device_seed(20261126)；事件 traffic_manager 与 traffic_spawn 均落库。
+
+4. ego_stalled（修复前/后）
+--------------------------
+修复前（2026-11-28 09:44 运行 20261128-094433，旧代码）：
+  arrival 后 throttle=0.00/brake=1.00 静止 8 s → `ego_stalled`（t=195.72），误报。
+  本次“修复前”复跑 20261128-100857 里 t=147.07 也在路口等灯时以 throttle=0.00/brake=0.60 误报。
+修复后规则：speed<0.5 km/h 时
+  a) 距规划终点 <= 12 m 或 agent.done() → 记为到达（ego_arrived），不清零不算停滞；
+  b) control.throttle >= 0.05（被要求前进）→ 累计 8 s 才发 ego_stalled；
+  c) 其它（throttle=0，被要求保持/等灯）→ 计数器清零。
+证据：
+  运行 20261128-102023（修复后）：t=104.12 ego_arrived（距终点 1.2 m），随后原地停 60 s 至停止，
+    全程 events 只有 traffic_manager + ego_arrived，**没有 ego_stalled**。
+  运行 20261128-102659（修复后）：在距终点 146.8 m 处用 5 个 static.prop.streetbarrier 横向封住车道，
+    t=47.62 发出 ego_stalled（throttle=0.75, brake=0.00, 距终点 146.8 m）——真停滞仍能检测；
+    移除路障后主车继续行驶，t=153.82 ego_arrived（距终点 1.1 m），无第二条停滞事件。
+  两次运行里程/终点：
+    20261128-102023  travelled 494.85 m，终点 (-110.75, 46.05)，距最后一个路线航点 3.69 m
+    20261128-102659  travelled 495.86 m，终点 (-110.75, 45.93)，距最后一个路线航点 3.65 m
+    （最后航点 road 5 lane -1 s 105.75 = (-107.24, 44.90)；agent 终点距车 1.1~1.2 m）
+
+5. 复现命令
+-----------
+  python tools/gen_route_presets.py --maps-root <Content/Carla/Maps> --out <tmp> --limit Town10HD
+  python -m py_compile backend/app/session_runner.py
+  起后端 + tools/run-editor-lowquality.ps1 -ResX 1600 -ResY 900 -Screen 50
+  POST /sessions/preview_map（Town10HD, loop, light）→ 等 preview → POST /start
+  截图：PrintWindow(hwnd, hdc, 3)，client-only

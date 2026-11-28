@@ -34,6 +34,17 @@ PREVIEW_FALLBACK_HZ = 0.5  # used when the preview tick cannot keep its budget
 DEFAULT_FIXED_DELTA = 1.0 / 20.0
 _STOPPED = {"stopped", "finished", "error", "created"}
 
+# Route overlay: drawn as one line per segment (this CARLA build's DebugHelper
+# has no draw_polyline), refreshed long before its lifetime runs out.
+ROUTE_DRAW_LIFE_S = 5.0
+ROUTE_DRAW_EVERY_S = 2.0
+# "Home" radius for the stall detector: the agent stops a few metres short of
+# the destination waypoint, so a stop inside this radius is an arrival.
+ARRIVAL_RADIUS_M = 12.0
+# Background traffic: keep the ego's spawn clear and spread the cars out.
+TRAFFIC_EGO_CLEARANCE_M = 25.0
+TRAFFIC_MIN_GAP_M = 25.0
+
 
 def _carla():
     import carla  # noqa: PLC0415  (lazy on purpose)
@@ -86,6 +97,10 @@ class Session:
         self._recording = False
         self._stalled_ticks = 0
         self._stall_reported = False
+        self._destination = None
+        self._arrived_reported = False
+        self._route_draw_error: str | None = None
+        self._traffic_report: dict = {}
         self.show_route = bool(config.get("run", {}).get("show_route", True))
         self._route_points: list = []
         self._route_color = None
@@ -377,34 +392,109 @@ class Session:
         self.ego.apply_control(carla.VehicleControl())
 
     def _spawn_traffic(self, vehicles: int, autopilot: bool) -> None:
+        """Spawn the configured background traffic and record why it did or did not.
+
+        The old version kept a 1.5 km "clear bubble" ahead of the ego; Town10HD
+        is ~500 m across (its farthest spawn point is 245 m from the route
+        start), so *every* spawn point was skipped and the preset silently
+        produced zero cars. The bubble is now 25 m, the cars are picked farthest
+        from the ego first and spread at least 25 m apart, and each failed
+        attempt is attributed instead of dropped on the floor.
+        """
+        report = {
+            "requested": int(vehicles),
+            "spawn_points": 0,
+            "blueprints": 0,
+            "skipped_clearance": 0,
+            "skipped_gap": 0,
+            "attempted": 0,
+            "spawned": 0,
+            "failed": 0,
+            "reasons": [],
+            "ego_clearance_m": TRAFFIC_EGO_CLEARANCE_M,
+            "min_gap_m": TRAFFIC_MIN_GAP_M,
+        }
+        self._traffic_report = report
         if vehicles <= 0:
             return
-        blueprints = [bp for bp in self.world.get_blueprint_library().filter("vehicle")
+        library = self.world.get_blueprint_library()
+        candidates = list(library.filter("vehicle.*"))
+        blueprints = [bp for bp in candidates
                       if bp.has_attribute("number_of_wheels")
                       and bp.get_attribute("number_of_wheels").as_int() == 4]
+        if not blueprints:  # never refuse to spawn over wheels we cannot read
+            blueprints = candidates
+        report["blueprints"] = len(blueprints)
         if not blueprints:
+            report["reasons"].append("no vehicle blueprint in this build")
+            self._record_traffic()
             return
-        spawn_points = self.world.get_map().get_spawn_points()
-        ego_loc = self.ego.get_location() if self.ego else None
-        random.shuffle(spawn_points)
-        ego_tf = self.ego.get_transform() if self.ego else None
-        ego_fwd = ego_tf.get_forward_vector() if ego_tf else None
-        for sp in spawn_points:
+
+        spawn_points = list(self.world.get_map().get_spawn_points())
+        report["spawn_points"] = len(spawn_points)
+        if not spawn_points:
+            report["reasons"].append("map has no spawn points")
+            self._record_traffic()
+            return
+
+        traffic_cfg = self.config.get("traffic", {})
+        try:
+            seed = int(traffic_cfg.get("seed") or 0)
+        except (TypeError, ValueError):
+            seed = 0
+        rng = random.Random(seed) if seed else random
+        ego_loc = self.ego.get_location() if self.ego is not None else None
+        # farthest first: the traffic ends up spread over the map, not queued
+        # behind the ego, and everything within the clearance is simply left out
+        ordered = sorted(
+            spawn_points,
+            key=lambda sp: -(sp.location.distance(ego_loc) if ego_loc else 0.0))
+        for spawn_point in ordered:
             if len(self.traffic) >= vehicles:
                 break
-            if ego_tf is not None:
-                # keep a clear bubble ahead of the ego
-                d = sp.location - ego_tf.location
-                if d.length() < 1500.0:
-                    continue
-                if ego_fwd is not None and d.dot(ego_fwd) > 0 and d.length() < 4000.0:
-                    continue
-            bp = random.choice(blueprints)
-            actor = self.world.try_spawn_actor(bp, sp)
-            if actor is None:
+            if ego_loc is not None and spawn_point.location.distance(ego_loc) < TRAFFIC_EGO_CLEARANCE_M:
+                report["skipped_clearance"] += 1
+                continue
+            if any(spawn_point.location.distance(actor.get_location()) < TRAFFIC_MIN_GAP_M
+                   for actor in self.traffic):
+                report["skipped_gap"] += 1
+                continue
+            bp = rng.choice(blueprints)
+            report["attempted"] += 1
+            try:
+                # spawn_actor (not try_spawn_actor) so the collision/blueprint
+                # reason survives as the exception text instead of a bare None
+                actor = self.world.spawn_actor(bp, spawn_point)
+            except Exception as exc:  # noqa: BLE001
+                report["failed"] += 1
+                reason = f"{type(exc).__name__}: {str(exc).splitlines()[0][:140]}"
+                if reason not in report["reasons"]:
+                    report["reasons"].append(reason)
                 continue
             actor.set_autopilot(autopilot)
+            if not autopilot:
+                # parked until /start hands it to the Traffic Manager
+                actor.apply_control(_carla().VehicleControl())
             self.traffic.append(actor)
+            report["spawned"] += 1
+        self._record_traffic()
+
+    def _record_traffic(self) -> None:
+        """Put the traffic spawn report in the log, the events and the status."""
+        report = self._traffic_report
+        detail = (f"背景车：请求 {report.get('requested', 0)}，生成 {report.get('spawned', 0)}，"
+                  f"候选点 {report.get('spawn_points', 0)}，蓝图 {report.get('blueprints', 0)}，"
+                  f"间距跳过 {report.get('skipped_clearance', 0) + report.get('skipped_gap', 0)}，"
+                  f"失败 {report.get('failed', 0)}")
+        if report.get("reasons"):
+            detail += "（" + "; ".join(report["reasons"][:3]) + "）"
+        print(f"[session {self.id}] {detail}", flush=True)
+        if report.get("requested", 0) > 0 and report.get("spawned", 0) == 0:
+            self.events.append({"t": self.sim_time, "kind": "traffic_spawn_failed",
+                                "detail": detail})
+        else:
+            self.events.append({"t": self.sim_time, "kind": "traffic_spawn",
+                                "detail": detail})
 
     def _spawn_walkers(self, walkers: int) -> None:
         if walkers <= 0:
@@ -570,6 +660,12 @@ class Session:
                 self.map = self.world.get_map()
 
             self._run_async()
+            # reset before spawning, so the spawn/traffic reports survive
+            self.tick = 0
+            self.sim_time = 0.0
+            self.travelled_m = 0.0
+            self.metrics = []
+            self.events = []
             self._apply_weather()
             self._spawn_ego()
             vehicles, _walkers = self._traffic_counts()
@@ -577,11 +673,11 @@ class Session:
             self._cache_route_points()
             self._set_settings(PREVIEW_HZ)
             self._compute_preview_camera()
-            self.tick = 0
-            self.sim_time = 0.0
-            self.travelled_m = 0.0
-            self.metrics = []
-            self.events = []
+            self._stalled_ticks = 0
+            self._stall_reported = False
+            self._arrived_reported = False
+            self._destination = None
+            self._route_draw_error = None
             self._stop_evt.clear()
             self._target_hz = PREVIEW_HZ
             self.state = "preview"
@@ -636,8 +732,7 @@ class Session:
             hz = 1.0 / max(0.01, float(run.get("fixed_delta_seconds", 0.05)))
             self._target_hz = max(1.0, min(hz, 100.0))
             self._run_async()
-            for actor in self.traffic:
-                actor.set_autopilot(bool(self.config.get("traffic", {}).get("autopilot", True)))
+            self._activate_traffic()
             _vehicles, walkers = self._traffic_counts()
             self._spawn_walkers(walkers)
 
@@ -662,6 +757,44 @@ class Session:
             self.last_error = traceback.format_exc()
             raise SessionError(self.error) from exc
         return self.status()
+
+    def _activate_traffic(self) -> None:
+        """Hand the parked preview traffic to the Traffic Manager at /start.
+
+        The TM lives in this process (it steps when *we* tick the world), and a
+        synchronous world wants a synchronous TM -- a mixed pair is the classic
+        source of jittering or frozen traffic (control-traffic skill).
+        """
+        if not self.traffic:
+            return
+        traffic_cfg = self.config.get("traffic", {})
+        autopilot = bool(traffic_cfg.get("autopilot", True))
+        for actor in self.traffic:
+            try:
+                actor.set_autopilot(autopilot)
+            except Exception as exc:  # noqa: BLE001
+                self.events.append({"t": self.sim_time, "kind": "traffic_autopilot_error",
+                                    "detail": f"{actor.type_id}: {exc}"})
+        if not autopilot:
+            return
+        detail = f"交通管理器：{len(self.traffic)} 辆车已交给 TM 自动驾驶"
+        try:
+            tm = self.client.get_trafficmanager()
+            tm.set_synchronous_mode(True)  # the world runs synchronous
+            detail += "，TM 同步模式开启"
+            try:
+                seed = traffic_cfg.get("seed")
+                if seed is not None:
+                    tm.set_random_device_seed(int(seed))
+                    detail += f"，随机种子 {seed}"
+            except Exception:  # noqa: BLE001  (seed is optional)
+                pass
+            self.events.append({"t": self.sim_time, "kind": "traffic_manager",
+                                "detail": detail})
+            print(f"[session {self.id}] {detail}", flush=True)
+        except Exception as exc:  # noqa: BLE001
+            self.events.append({"t": self.sim_time, "kind": "traffic_manager_error",
+                                "detail": str(exc)})
 
     def _build_agent(self):
         """Instantiate the configured agent and point it at the route end."""
@@ -717,6 +850,7 @@ class Session:
         if destination_wp is None:
             raise SessionError("路线终点无法解析")
         destination_wp = self._driving_waypoint_near(destination_wp)
+        self._destination = destination_wp.transform.location
         try:
             agent.set_destination(destination_wp.transform.location)
         except TypeError:
@@ -826,15 +960,27 @@ class Session:
                     self._step_agent()
                 if self._running_metrics and self.tick % max(1, int(self._target_hz / 10)) == 0:
                     self._sample_metrics()
-                # paint the planned route into the world; it expires if we stop
-                if (self.show_route and self._route_points
+                # paint the planned route into the world; it expires if we stop.
+                # This CARLA build's DebugHelper has draw_line but no
+                # draw_polyline, and the old call raised AttributeError into a
+                # bare `except: pass` -- the route was never drawn at all.
+                if (self.show_route and len(self._route_points) >= 2
                         and self._route_color is not None
-                        and self.tick % max(1, int(self._target_hz / 2)) == 0):
+                        and self.tick % max(1, int(self._target_hz * ROUTE_DRAW_EVERY_S)) == 0):
                     try:
-                        self.world.debug.draw_polyline(
-                            self._route_points, self._route_color, 0.3, 0.9)
-                    except Exception:  # noqa: BLE001
-                        pass
+                        for begin, end in zip(self._route_points, self._route_points[1:]):
+                            self.world.debug.draw_line(
+                                begin, end, 0.25, self._route_color,
+                                ROUTE_DRAW_LIFE_S, True)
+                    except Exception as exc:  # noqa: BLE001
+                        if self._route_draw_error is None:
+                            self._route_draw_error = str(exc)
+                            self.events.append({
+                                "t": round(self.sim_time, 2),
+                                "kind": "route_draw_error",
+                                "detail": f"路线折线绘制失败：{exc}",
+                            })
+                            print(f"[session {self.id}] 路线绘制失败：{exc}", flush=True)
             except Exception as exc:  # noqa: BLE001
                 self.last_error = traceback.format_exc()
                 self.events.append({"t": self.sim_time, "kind": "tick_error", "detail": str(exc)})
@@ -862,6 +1008,25 @@ class Session:
             if sleep_for > 0:
                 self._stop_evt.wait(sleep_for)
 
+    def _at_destination(self) -> bool:
+        """True when the ego is parked *because the route ended*.
+
+        Two independent signals: the agent reports its plan is done, or the car
+        sits inside ARRIVAL_RADIUS_M of the planned end. Either one means a
+        standing car is an arrival, not a stall.
+        """
+        if self.ego is None or self._destination is None:
+            return False
+        try:
+            if self.agent is not None and self.agent.done():
+                return True
+        except Exception:  # noqa: BLE001  (agent implementation without done())
+            pass
+        try:
+            return self.ego.get_location().distance(self._destination) <= ARRIVAL_RADIUS_M
+        except Exception:  # noqa: BLE001
+            return False
+
     def _step_agent(self) -> None:
         if self.agent is None or self.ego is None:
             return
@@ -870,23 +1035,40 @@ class Session:
             control.manual_gear_shift = False
             self.ego.apply_control(control)
 
-            # "throttle but no movement" is the failure mode that looks like a
-            # broken simulator, so surface it as an event instead of silently
-            # idling forever.
+            # A standing car is only a stall when something asked it to move and
+            # it did not: parked at the planned end it is an arrival, and with
+            # throttle 0 / brake on it is being held (red light, queue, the
+            # agent's own stop). Both used to be reported as "8 s 未移动".
             velocity = self.ego.get_velocity()
             speed = math.sqrt(velocity.x ** 2 + velocity.y ** 2 + velocity.z ** 2) * 3.6
-            if speed < 0.5:
+            if speed >= 0.5:
+                self._stalled_ticks = 0
+            elif self._at_destination():
+                self._stalled_ticks = 0
+                if not self._arrived_reported:
+                    self._arrived_reported = True
+                    distance = self.ego.get_location().distance(self._destination)
+                    self.events.append({
+                        "t": round(self.sim_time, 2),
+                        "kind": "ego_arrived",
+                        "detail": f"主车到达规划终点（距终点 {distance:.1f} m），停车不算停滞",
+                    })
+            elif control.throttle >= 0.05:
                 self._stalled_ticks += 1
             else:
+                # commanded to hold, not to move
                 self._stalled_ticks = 0
+
             stall_seconds = self._stalled_ticks / max(1.0, self._target_hz)
             if (stall_seconds > 8.0 and not self._stall_reported):
                 self._stall_reported = True
+                remaining = (self.ego.get_location().distance(self._destination)
+                             if self._destination is not None else float("nan"))
                 self.events.append({
                     "t": round(self.sim_time, 2),
                     "kind": "ego_stalled",
                     "detail": f"主车 8 s 未移动（throttle={control.throttle:.2f}, "
-                              f"brake={control.brake:.2f}）",
+                              f"brake={control.brake:.2f}, 距终点 {remaining:.1f} m）",
                 })
         except Exception as exc:  # noqa: BLE001
             self.state = "error"
@@ -1019,7 +1201,13 @@ class Session:
             "tick": self.tick,
             "sim_time": round(self.sim_time, 3),
             "traffic": len(self.traffic),
+            "traffic_detail": self._traffic_report,
             "walkers": len(self.walkers),
+            "route": {
+                "visible": bool(self.show_route and len(self._route_points) >= 2),
+                "points": len(self._route_points),
+                "draw_error": self._route_draw_error,
+            },
             "preview_degraded": self.preview_degraded,
             # The clock the session is *really* running at, so the panel can show
             # a live sync chip and stop showing one once the simulator has

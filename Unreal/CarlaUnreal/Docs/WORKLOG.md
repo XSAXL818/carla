@@ -5,6 +5,13 @@
 
 ---
 
+### 10:45 · Town10 三项缺陷修复：路线预设 / 背景车 / 停滞误报
+- **问题**：① `loop` 预设 18 个航点里 8 个按 `(road, lane_id=-1, s)` 解析不出（735/469 只有 lane 1，不是路不存在），且路线折线从未画出来；② 背景车 `轻度 4` 实际 0 辆；③ 到终点停车 8 s 被判 `ego_stalled`。
+- **处理**：`gen_route_presets.py` 读取 laneSection，按 s 取真实存在的行驶车道（右侧优先），重新生成 `data/routes/Town10HD.json`（schema 不变、长度/航点数不变）；`session_runner.py` 把 `draw_polyline`（本分支 DebugHelper 没有这个方法，AttributeError 被 `except: pass` 吞掉）改为逐段 `draw_line`（life 5 s、每 2 s 重画、失败记事件）；背景车的 1.5 km“净空泡”在 500 m 见方的 Town10 上把 155 个出生点全过滤掉，改为 25 m 净空 + 最远优先 + 25 m 间距，逐点记录失败原因并在 start 时把车交给同步 TM；停滞判定改为“到终点/无剩余计划不算、throttle>=0.05 才累计 8 s”。
+- **结果**：130/130 航点直连解析通过；背景车 4/4 生成、独立 client 见 3 辆 29–30 km/h 行驶 + 1 辆等红灯；修复后运行到终点停车 60 s 无 `ego_stalled`，用 5 个路障封路仍能在 8 s 后报 `ego_stalled`（throttle 0.75）。里程 494.9/495.9 m，距最后航点 3.7 m。
+- **证据**：`acceptance/evidence-town10/fix-*.png` + `fix-measurements.txt`。
+- **遗留**：预设折线只保证“贴合地图”，主车仍由 agent 从出生点到终点自行规划，中途并不经过预设中间航点（architecture §14 已列为未验证项），两者只在终点附近重合。
+
 ### 09:56 · Town10 真机端到端：主车确实在跑，但暴露 6 个问题
 - **做了什么**：起后端 + `-game` → 预览 Town10HD → `POST /start` → 采样 60 s + 独立 CARLA client 做地面真值对照 → 抓 6 帧 → 停止清理。
 - **结果（好消息）**：主车真在跑。独立 client 测得 **439.6 m** 真实位移；后端指标首 60 s 345.7 m、全程 494.6 m，速度稳定 25–27 km/h；结束时停在**距规划终点 3.6 m**处。`tick`/`sim_time` 平稳推进，无 planner fallback。
